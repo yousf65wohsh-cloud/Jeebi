@@ -1,0 +1,82 @@
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { supabase, isSupabaseReady } from '../supabase/client'
+
+const AuthContext = createContext()
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!isSupabaseReady()) {
+      setLoading(false)
+      return
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription?.unsubscribe()
+  }, [])
+
+  const signUp = useCallback(async (email, password) => {
+    setError(null)
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) {
+      setError(getArabicError(error.message))
+      return false
+    }
+    return true
+  }, [])
+
+  const signIn = useCallback(async (email, password) => {
+    setError(null)
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError(getArabicError(error.message))
+      return false
+    }
+    return true
+  }, [])
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+  }, [])
+
+  const clearError = useCallback(() => setError(null), [])
+
+  return (
+    <AuthContext.Provider value={{ user, loading, error, signUp, signIn, signOut, clearError }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+function getArabicError(msg) {
+  const map = {
+    'Invalid login credentials': 'بيانات الدخول غير صحيحة',
+    'Email not confirmed': 'البريد الإلكتروني غير مؤكد',
+    'User already registered': 'هذا المستخدم مسجل مسبقاً',
+    'Password should be at least 6 characters': 'كلمة السر يجب أن تكون 6 أحرف على الأقل',
+    'Unable to validate email or password': 'البريد الإلكتروني أو كلمة السر غير صالحة',
+    'Invalid email': 'البريد الإلكتروني غير صالح',
+  }
+  for (const [en, ar] of Object.entries(map)) {
+    if (msg.includes(en)) return ar
+  }
+  return msg
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
+}
