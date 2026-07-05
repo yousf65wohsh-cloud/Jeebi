@@ -87,7 +87,7 @@ function GoalForm({ goal, onSave, onCancel }) {
 }
 
 export default function Goals() {
-  const { goals = [], addGoal = () => {}, updateGoal = () => {}, deleteGoal = () => {}, pauseGoal = () => {}, resumeGoal = () => {}, completeGoal = () => {}, showToast = () => {}, runDiagnostics = () => {} } = useApp()
+  const { goals = [], addGoal = () => {}, updateGoal = () => {}, deleteGoal = () => {}, pauseGoal = () => {}, resumeGoal = () => {}, completeGoal = () => {}, showToast = () => {} } = useApp()
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState(null)
   const [menuGoalId, setMenuGoalId] = useState(null)
@@ -143,13 +143,6 @@ export default function Goals() {
             <h2 className="text-lg font-bold text-gray-800">الأهداف</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => { if (typeof runDiagnostics === 'function') runDiagnostics() }}
-              title="تشخيص مشكلة الاتصال"
-              className="flex items-center gap-1 text-xs bg-red-50 text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-100 cursor-pointer"
-            >
-              تشخيص المشكلة
-            </button>
             <button
               onClick={() => { setShowForm(true); setEditingGoal(null) }}
               className="flex items-center gap-1 text-sm bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg hover:bg-purple-100 cursor-pointer"

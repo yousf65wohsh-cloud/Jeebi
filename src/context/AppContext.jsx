@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { useAuth } from './AuthContext'
 import { isSupabaseReady } from '../supabase/client'
 import { loadUserData, syncToSupabase, initializeUserData } from '../services/dataService'
-import { diagnoseAndFixGoalsSchema } from '../services/dataServiceDebug'
 
 const AppContext = createContext(null)
 const STORAGE_KEY = 'jeebi_data'
@@ -456,11 +455,6 @@ export function AppProvider({ children }) {
     }
   }, [data, user, processScheduledGoals])
 
-  const runDiagnostics = useCallback(async () => {
-    if (!user || !isSupabaseReady()) return
-    await diagnoseAndFixGoalsSchema(user.id)
-  }, [user?.id])
-
   const resetToDefaults = useCallback(async () => {
     if (!user || !isSupabaseReady()) return
 
@@ -517,7 +511,6 @@ export function AppProvider({ children }) {
     pauseGoal: wrapWithLog(pauseGoal, 'pauseGoal'),
     resumeGoal: wrapWithLog(resumeGoal, 'resumeGoal'),
     completeGoal: wrapWithLog(completeGoal, 'completeGoal'),
-    runDiagnostics: wrapWithLog(runDiagnostics, 'runDiagnostics'),
     resetToDefaults: wrapWithLog(resetToDefaults, 'resetToDefaults'),
   }
 
@@ -561,7 +554,6 @@ export function useApp() {
     pauseGoal: wrapWithLog(ctx.pauseGoal, 'pauseGoal'),
     resumeGoal: wrapWithLog(ctx.resumeGoal, 'resumeGoal'),
     completeGoal: wrapWithLog(ctx.completeGoal, 'completeGoal'),
-    runDiagnostics: wrapWithLog(ctx.runDiagnostics, 'runDiagnostics'),
     resetToDefaults: wrapWithLog(ctx.resetToDefaults, 'resetToDefaults'),
   }
 }
