@@ -39,7 +39,11 @@ function AuthGate({ children }) {
 }
 
 function SyncIndicator() {
-  const { syncing } = useApp()
+  let syncing = false
+  try {
+    syncing = useApp()?.syncing ?? false
+  } catch { /* AppProvider not ready yet */ }
+
   const { user, signOut } = useAuth()
 
   if (!user) return null

@@ -11,9 +11,18 @@ export default function LoginPage({ onSwitchToSignup }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    clearError()
+    if (typeof clearError === 'function') clearError()
     setSubmitting(true)
-    await signIn(email, password)
+    try {
+      if (typeof signIn !== 'function') {
+        console.warn('signIn is not available')
+        setSubmitting(false)
+        return
+      }
+      await signIn(email, password)
+    } catch (err) {
+      console.warn('Login error:', err?.message ?? err)
+    }
     setSubmitting(false)
   }
 

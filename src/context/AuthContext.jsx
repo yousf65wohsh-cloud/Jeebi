@@ -14,14 +14,19 @@ export function AuthProvider({ children }) {
       return
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then((result) => {
+      const session = result?.data?.session ?? null
       setUser(session?.user ?? null)
+      setLoading(false)
+    }).catch((err) => {
+      console.warn('Auth session fetch failed:', err?.message ?? err)
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const subscriptionResult = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
+    const subscription = subscriptionResult?.data?.subscription ?? null
 
     return () => subscription?.unsubscribe()
   }, [])
@@ -47,7 +52,13 @@ export function AuthProvider({ children }) {
   }, [])
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut()
+    try {
+      if (supabase && typeof supabase.auth?.signOut === 'function') {
+        await supabase.auth.signOut()
+      }
+    } catch (err) {
+      console.warn('Sign out error:', err?.message ?? err)
+    }
     setUser(null)
   }, [])
 
