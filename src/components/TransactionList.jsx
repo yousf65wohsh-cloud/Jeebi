@@ -1,14 +1,62 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Trash2, Receipt, Pencil, AlertTriangle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import EditTransactionModal from './EditTransactionModal'
+import FilterBar from './FilterBar'
+
+function safeDate(dateStr) {
+  try {
+    const d = new Date(dateStr)
+    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US')
+  } catch {}
+  return ''
+}
+
+function applyFilters(raw, filters) {
+  const f = filters ?? {}
+  let list = raw ?? []
+
+  if (f.search) {
+    const q = f.search.toLowerCase()
+    list = list.filter((t) => (t.description ?? '').toLowerCase().includes(q))
+  }
+  if (f.categoryId) {
+    list = list.filter((t) => t.categoryId === f.categoryId)
+  }
+  if (f.dateFrom) {
+    list = list.filter((t) => (t.date ?? '') >= f.dateFrom)
+  }
+  if (f.dateTo) {
+    list = list.filter((t) => (t.date ?? '') <= f.dateTo)
+  }
+  if (f.amountMin !== '') {
+    const min = parseFloat(f.amountMin)
+    if (!isNaN(min)) list = list.filter((t) => (t.amount ?? 0) >= min)
+  }
+  if (f.amountMax !== '') {
+    const max = parseFloat(f.amountMax)
+    if (!isNaN(max)) list = list.filter((t) => (t.amount ?? 0) <= max)
+  }
+
+  return list
+}
+
+const INITIAL_FILTERS = { search: '', categoryId: '', dateFrom: '', dateTo: '', amountMin: '', amountMax: '' }
 
 export default function TransactionList() {
   const { transactions, categories, removeTransaction } = useApp()
   const [editTxn, setEditTxn] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
+  const [filters, setFilters] = useState(INITIAL_FILTERS)
 
   const getCategory = (id) => (categories ?? []).find((c) => c.id === id)
+
+  const filtered = useMemo(
+    () => applyFilters(transactions, filters),
+    [transactions, filters]
+  )
+
+  const hasFilters = Object.values(filters).some((v) => v !== '')
 
   const confirmDelete = () => {
     if (deleteId && typeof removeTransaction === 'function') {
@@ -17,18 +65,35 @@ export default function TransactionList() {
     }
   }
 
+  const handleReset = () => setFilters(INITIAL_FILTERS)
+
+  const safeTxnList = filtered ?? []
+  const rawCount = (transactions ?? []).length
+
   return (
     <>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Receipt className="w-5 h-5 text-orange-500" />
-          <h2 className="text-lg font-bold text-gray-800">آخر المعاملات</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-orange-500" />
+            <h2 className="text-lg font-bold text-gray-800">آخر المعاملات</h2>
+            {hasFilters && (
+              <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                {safeTxnList.length} من {rawCount}
+              </span>
+            )}
+          </div>
         </div>
-        {(transactions ?? []).length === 0 ? (
+
+        <FilterBar filters={filters} setFilters={setFilters} onReset={handleReset} />
+
+        {rawCount === 0 ? (
           <p className="text-gray-400 text-sm text-center py-6">لا توجد معاملات بعد</p>
+        ) : safeTxnList.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center py-6">لا توجد معاملات تطابق الفلتر</p>
         ) : (
           <div className="space-y-2 max-h-80 overflow-y-auto">
-            {(transactions ?? []).map((txn) => {
+            {safeTxnList.map((txn) => {
               const cat = getCategory(txn.categoryId)
               return (
                 <div
@@ -46,9 +111,7 @@ export default function TransactionList() {
                       </p>
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         {txn.description && <span className="truncate">{txn.description}</span>}
-                        {txn.date && (
-                          <span>{new Date(txn.date).toLocaleDateString('en-US')}</span>
-                        )}
+                        {txn.date && <span>{safeDate(txn.date)}</span>}
                       </div>
                     </div>
                   </div>
