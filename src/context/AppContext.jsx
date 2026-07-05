@@ -299,14 +299,10 @@ export function AppProvider({ children }) {
           {
             id,
             title: goal.title || '',
-            emoji: goal.emoji || '',
             target_amount: Number(goal.target_amount) || 0,
             saved_amount: 0,
             frequency: goal.frequency || 'monthly',
-            contribution_amount: Number(goal.contribution_amount) || 0,
-            start_date: goal.start_date || '',
-            target_date: goal.target_date || '',
-            last_contribution_date: '',
+            transfer_amount: Number(goal.transfer_amount) || 0,
             status: 'active',
             created_at: now,
             updated_at: now,
@@ -388,25 +384,21 @@ export function AppProvider({ children }) {
 
     const updatedGoals = currentData.goals.map((goal) => {
       if (goal.status !== 'active') return goal
-      if (!goal.contribution_amount || goal.saved_amount >= goal.target_amount) return goal
+      if (!goal.transfer_amount || goal.saved_amount >= goal.target_amount) return goal
 
-      const lastDate = goal.last_contribution_date || goal.start_date
+      const lastDate = goal.updated_at || goal.created_at
       if (!lastDate) return goal
 
       let due = false
-      if (!goal.last_contribution_date) {
-        due = lastDate <= today
-      } else {
-        const next = new Date(lastDate)
-        if (goal.frequency === 'daily') next.setDate(next.getDate() + 1)
-        else if (goal.frequency === 'weekly') next.setDate(next.getDate() + 7)
-        else if (goal.frequency === 'monthly') next.setMonth(next.getMonth() + 1)
-        due = now >= next
-      }
+      const next = new Date(lastDate)
+      if (goal.frequency === 'daily') next.setDate(next.getDate() + 1)
+      else if (goal.frequency === 'weekly') next.setDate(next.getDate() + 7)
+      else if (goal.frequency === 'monthly') next.setMonth(next.getMonth() + 1)
+      due = now >= next
       if (!due) return goal
 
       const remainingNeeded = goal.target_amount - goal.saved_amount
-      const contrib = Math.min(goal.contribution_amount, remainingNeeded)
+      const contrib = Math.min(goal.transfer_amount, remainingNeeded)
 
       if ((currentData.savings ?? 0) - movedAmount < contrib) {
         skippedGoals.push(goal.title)
@@ -420,8 +412,8 @@ export function AppProvider({ children }) {
       return {
         ...goal,
         saved_amount: newSaved,
-        last_contribution_date: today,
-        status: newSaved >= goal.target_amount ? 'completed' : 'active',
+        updated_at: now.toISOString(),
+        completed: newSaved >= goal.target_amount,
       }
     })
 
@@ -434,7 +426,7 @@ export function AppProvider({ children }) {
           ...(prev.transfers ?? []),
           {
             id: 'transfer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-            type: 'goal_contribution',
+            type: 'goal_transfer',
             amount: movedAmount,
             date: today,
           },

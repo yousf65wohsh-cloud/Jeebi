@@ -11,15 +11,12 @@ CREATE TABLE IF NOT EXISTS goals (
   id TEXT PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
-  emoji TEXT DEFAULT '',
   target_amount NUMERIC NOT NULL DEFAULT 0,
   saved_amount NUMERIC NOT NULL DEFAULT 0,
+  transfer_amount NUMERIC NOT NULL DEFAULT 0,
   frequency TEXT NOT NULL DEFAULT 'monthly',
-  contribution_amount NUMERIC NOT NULL DEFAULT 0,
-  start_date TEXT NOT NULL DEFAULT '',
-  target_date TEXT DEFAULT NULL,
-  last_contribution_date TEXT DEFAULT NULL,
-  status TEXT NOT NULL DEFAULT 'active',
+  next_transfer TEXT DEFAULT NULL,
+  completed BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

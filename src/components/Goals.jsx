@@ -6,24 +6,18 @@ const FREQ_LABELS = { daily: 'يومياً', weekly: 'أسبوعياً', monthly
 
 function GoalForm({ goal, onSave, onCancel }) {
   const [title, setTitle] = useState(goal?.title || '')
-  const [emoji, setEmoji] = useState(goal?.emoji || '')
   const [targetAmount, setTargetAmount] = useState(goal?.target_amount || '')
   const [frequency, setFrequency] = useState(goal?.frequency || 'monthly')
-  const [contributionAmount, setContributionAmount] = useState(goal?.contribution_amount || '')
-  const [startDate, setStartDate] = useState(goal?.start_date || new Date().toISOString().slice(0, 10))
-  const [targetDate, setTargetDate] = useState(goal?.target_date || '')
+  const [transferAmount, setTransferAmount] = useState(goal?.transfer_amount || '')
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!title.trim()) return
     onSave({
       title: title.trim(),
-      emoji: emoji.trim(),
       target_amount: parseFloat(targetAmount) || 0,
       frequency,
-      contribution_amount: parseFloat(contributionAmount) || 0,
-      start_date: startDate,
-      target_date: targetDate,
+      transfer_amount: parseFloat(transferAmount) || 0,
     })
   }
 
@@ -34,29 +28,11 @@ function GoalForm({ goal, onSave, onCancel }) {
         placeholder="اسم الهدف" required
         className="w-full border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-purple-400"
       />
-      <div className="flex gap-3">
-        <input
-          type="text" value={emoji} onChange={(e) => setEmoji(e.target.value)}
-          placeholder="🚀" maxLength={4}
-          className="w-16 border border-gray-200 rounded-lg px-3 py-2.5 text-center outline-none focus:border-purple-400"
-        />
-        <input
-          type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)}
-          placeholder="المبلغ المستهدف" required min="1"
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-purple-400"
-        />
-      </div>
-      <div className="flex gap-3">
-        <input
-          type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-purple-400 text-sm"
-        />
-        <input
-          type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)}
-          placeholder="تاريخ الهدف"
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-purple-400 text-sm"
-        />
-      </div>
+      <input
+        type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)}
+        placeholder="المبلغ المستهدف" required min="1"
+        className="w-full border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-purple-400"
+      />
       <div className="flex gap-3">
         <select
           value={frequency} onChange={(e) => setFrequency(e.target.value)}
@@ -67,7 +43,7 @@ function GoalForm({ goal, onSave, onCancel }) {
           <option value="monthly">شهرياً</option>
         </select>
         <input
-          type="number" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)}
+          type="number" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)}
           placeholder="مبلغ الادخار" required min="1"
           className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-purple-400"
         />
@@ -168,7 +144,6 @@ export default function Goals() {
                 <div key={goal.id} className="border border-gray-100 rounded-xl p-3 md:p-4 hover:shadow-sm transition-shadow relative">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      {goal.emoji && <span className="text-xl leading-none">{goal.emoji}</span>}
                       <span className="font-bold text-gray-800 truncate">{goal.title}</span>
                     </div>
                     <div className="relative shrink-0">
@@ -236,7 +211,7 @@ export default function Goals() {
                       {pct.toFixed(0)}%
                     </span>
                     <span className="text-gray-400">
-                      {goal.contribution_amount.toLocaleString('en-US')} د.ع/{FREQ_LABELS[goal.frequency] || goal.frequency}
+                      {goal.transfer_amount.toLocaleString('en-US')} د.ع/{FREQ_LABELS[goal.frequency] || goal.frequency}
                     </span>
                   </div>
 

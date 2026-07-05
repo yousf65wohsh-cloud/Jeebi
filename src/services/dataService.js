@@ -27,9 +27,7 @@ function validateGoal(goal) {
   if (goal.target_amount === undefined || goal.target_amount === null) missing.push('target_amount')
   if (goal.saved_amount === undefined || goal.saved_amount === null) missing.push('saved_amount')
   if (!goal.frequency) missing.push('frequency')
-  if (goal.contribution_amount === undefined || goal.contribution_amount === null) missing.push('contribution_amount')
-  if (goal.start_date === undefined || goal.start_date === null) missing.push('start_date')
-  if (!goal.status) missing.push('status')
+  if (goal.transfer_amount === undefined || goal.transfer_amount === null) missing.push('transfer_amount')
   if (missing.length > 0) {
     console.error('[dataService] Goal validation failed — missing properties: ' + missing.join(', '), JSON.stringify(goal))
     return false
@@ -89,15 +87,12 @@ export async function loadUserData(userId) {
     goals: goals.map(g => ({
       id: g.id,
       title: g.title,
-      emoji: g.emoji || '',
       target_amount: Number(g.target_amount) || 0,
       saved_amount: Number(g.saved_amount) || 0,
       frequency: g.frequency || 'monthly',
-      contribution_amount: Number(g.contribution_amount) || 0,
-      start_date: g.start_date || '',
-      target_date: g.target_date || '',
-      last_contribution_date: g.last_contribution_date || '',
-      status: g.status || 'active',
+      transfer_amount: Number(g.transfer_amount) || 0,
+      completed: g.completed || false,
+      status: g.completed ? 'completed' : 'active',
       created_at: g.created_at || '',
       updated_at: g.updated_at || '',
     })),
@@ -178,15 +173,11 @@ export async function syncToSupabase(userId, data) {
       id: goal.id,
       user_id: userId,
       title: goal.title,
-      emoji: goal.emoji || null,
       target_amount: Number(goal.target_amount) || 0,
       saved_amount: Number(goal.saved_amount) || 0,
       frequency: goal.frequency || 'monthly',
-      contribution_amount: Number(goal.contribution_amount) || 0,
-      start_date: goal.start_date || '',
-      target_date: goal.target_date || null,
-      last_contribution_date: goal.last_contribution_date || null,
-      status: goal.status || 'active',
+      transfer_amount: Number(goal.transfer_amount) || 0,
+      completed: goal.status === 'completed' || goal.completed || false,
       created_at: goal.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
