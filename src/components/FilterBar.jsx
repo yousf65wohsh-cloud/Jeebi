@@ -60,7 +60,7 @@ export default function FilterBar({ filters, setFilters, onReset }) {
       </div>
 
       {showPanel && (
-        <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
           <div>
             <label className="block text-xs text-gray-500 mb-1">المحفظة</label>
             <select

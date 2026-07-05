@@ -78,7 +78,7 @@ export default function CategoryManager() {
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Tag className="w-5 h-5 text-purple-500" />
@@ -118,14 +118,14 @@ export default function CategoryManager() {
         {(categories ?? []).length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-6">لا توجد محفظات بعد</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             {(categories ?? []).map((cat) => {
               const stats = typeof getCatStats === 'function' ? getCatStats(cat.id) : { budget: 0, spent: 0, remaining: 0, cat: null }
               const pct = stats.budget > 0 ? Math.min((stats.spent / stats.budget) * 100, 100) : 0
               const txns = catTxns?.[cat.id] ?? []
               return (
-                <div key={cat.id} className="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
+                <div key={cat.id} className="border border-gray-100 rounded-xl p-3 md:p-4 hover:shadow-sm transition-shadow">
+                  <div className="flex items-center justify-between mb-2 md:mb-3">
                     <div className="flex items-center gap-2">
                       <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
                       <span className="font-bold text-gray-800">{cat.name}</span>
@@ -154,7 +154,7 @@ export default function CategoryManager() {
                     </span>
                   </div>
 
-                  <div className="w-full h-2.5 bg-gray-100 rounded-full mb-1.5 overflow-hidden">
+                  <div className="w-full h-2 md:h-2.5 bg-gray-100 rounded-full mb-1.5 overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-300"
                       style={{ width: pct + '%', backgroundColor: barColor(pct) }} />
                   </div>

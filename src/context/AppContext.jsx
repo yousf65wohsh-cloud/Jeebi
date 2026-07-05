@@ -43,6 +43,9 @@ export function AppProvider({ children }) {
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
   const syncTimer = useRef(null)
+  const scheduledProcessedRef = useRef(false)
+  const dataRef = useRef(data)
+  dataRef.current = data
 
   useEffect(() => {
     if (!user) {
@@ -55,7 +58,7 @@ export function AppProvider({ children }) {
     if (!isSupabaseReady()) {
       console.log('[AppContext] Supabase not configured — falling back to LocalStorage')
       const local = loadLocalData()
-      setData(local || { balance: 0, categories: [], transactions: [] })
+      setData(local || { balance: 0, savings: 0, categories: [], transactions: [], transfers: [], goals: [] })
       setDataLoading(false)
       return
     }
@@ -72,7 +75,7 @@ export function AppProvider({ children }) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults))
           })
         }
-        console.log(`[AppContext] Loaded remote data: ${remote.categories.length} categories, ${remote.transactions.length} transactions`)
+        console.log(`[AppContext] Loaded remote data: ${remote.categories.length} categories, ${remote.transactions.length} transactions, ${remote.goals.length} goals, savings=${remote.savings}`)
         setData(remote)
       })
       .catch((err) => {
@@ -82,7 +85,7 @@ export function AppProvider({ children }) {
           console.log('[AppContext] Falling back to LocalStorage cache')
           setData(local)
         } else {
-          setData({ balance: 0, categories: [], transactions: [] })
+          setData({ balance: 0, savings: 0, categories: [], transactions: [], transfers: [], goals: [] })
         }
       })
       .finally(() => {
@@ -117,7 +120,9 @@ export function AppProvider({ children }) {
   }, [data])
 
   const totalExpenses = data ? (data.transactions ?? []).reduce((s, t) => s + (t.amount ?? 0), 0) : 0
-  const remainingBalance = data ? (data.balance ?? 0) - totalExpenses : 0
+  const savings = data?.savings ?? 0
+  const remainingBalance = data ? (data.balance ?? 0) - totalExpenses - savings : 0
+  const goals = data?.goals ?? []
 
   const getCatStats = useCallback((catId) => {
     if (!data) return { budget: 0, spent: 0, remaining: 0, pct: 0, cat: null }
@@ -146,13 +151,13 @@ export function AppProvider({ children }) {
   }, [])
 
   const setBalance = useCallback((amount) => {
-    setData((prev) => prev ? { ...prev, balance: amount } : { balance: amount, categories: [], transactions: [] })
+    setData((prev) => prev ? { ...prev, balance: amount } : { balance: amount, savings: 0, categories: [], transactions: [], transfers: [], goals: [] })
   }, [])
 
   const addCategory = useCallback((name, color, budget) => {
     const id = 'cat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
     setData((prev) => {
-      const base = prev || { balance: 0, categories: [], transactions: [] }
+      const base = prev || { balance: 0, savings: 0, categories: [], transactions: [], transfers: [], goals: [] }
       return {
         ...base,
         categories: [...(base.categories ?? []), { id, name, color, budget: budget || 0 }],
@@ -186,7 +191,7 @@ export function AppProvider({ children }) {
   const addTransaction = useCallback((amount, categoryId, description, date) => {
     const id = 'txn_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
     setData((prev) => {
-      const base = prev || { balance: 0, categories: [], transactions: [] }
+      const base = prev || { balance: 0, savings: 0, categories: [], transactions: [], transfers: [], goals: [] }
       return {
         ...base,
         transactions: [
@@ -219,6 +224,237 @@ export function AppProvider({ children }) {
     })
   }, [])
 
+  const transferToSavings = useCallback((amount) => {
+    const val = typeof amount === 'number' ? amount : parseFloat(amount)
+    if (isNaN(val) || val <= 0) {
+      showToast('يجب أن يكون المبلغ أكبر من صفر', 'warning')
+      return
+    }
+    const currentData = dataRef.current
+    const totalExp = (currentData?.transactions ?? []).reduce((s, t) => s + (t.amount ?? 0), 0)
+    const remaining = (currentData?.balance ?? 0) - totalExp - (currentData?.savings ?? 0)
+    if (val > remaining) {
+      showToast('المبلغ يتجاوز الرصيد المتبقي', 'warning')
+      return
+    }
+
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        savings: (prev.savings ?? 0) + val,
+        transfers: [
+          {
+            id: 'transfer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            type: 'deposit',
+            amount: val,
+            date: new Date().toISOString(),
+          },
+          ...(prev.transfers ?? []),
+        ],
+      }
+    })
+    showToast(`تم تحويل ${val.toLocaleString('en-US')} د.ع إلى المدخرات`, 'info')
+  }, [showToast])
+
+  const withdrawFromSavings = useCallback((amount) => {
+    const val = typeof amount === 'number' ? amount : parseFloat(amount)
+    if (isNaN(val) || val <= 0) {
+      showToast('يجب أن يكون المبلغ أكبر من صفر', 'warning')
+      return
+    }
+    if (val > dataRef.current?.savings) {
+      showToast('المبلغ يتجاوز المدخرات الحالية', 'warning')
+      return
+    }
+
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        savings: (prev.savings ?? 0) - val,
+        transfers: [
+          {
+            id: 'transfer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            type: 'withdraw',
+            amount: val,
+            date: new Date().toISOString(),
+          },
+          ...(prev.transfers ?? []),
+        ],
+      }
+    })
+    showToast(`تم سحب ${val.toLocaleString('en-US')} د.ع من المدخرات`, 'info')
+  }, [showToast])
+
+  const addGoal = useCallback((goal) => {
+    const id = 'goal_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
+    const now = new Date().toISOString()
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        goals: [
+          ...(prev.goals ?? []),
+          {
+            id,
+            title: goal.title || '',
+            emoji: goal.emoji || '',
+            target_amount: Number(goal.target_amount) || 0,
+            saved_amount: 0,
+            frequency: goal.frequency || 'monthly',
+            contribution_amount: Number(goal.contribution_amount) || 0,
+            start_date: goal.start_date || '',
+            target_date: goal.target_date || '',
+            last_contribution_date: '',
+            status: 'active',
+            created_at: now,
+            updated_at: now,
+          },
+        ],
+      }
+    })
+  }, [])
+
+  const updateGoal = useCallback((id, updates) => {
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        goals: (prev.goals ?? []).map((g) =>
+          g.id === id ? { ...g, ...updates, updated_at: new Date().toISOString() } : g
+        ),
+      }
+    })
+  }, [])
+
+  const deleteGoal = useCallback((id) => {
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        goals: (prev.goals ?? []).filter((g) => g.id !== id),
+      }
+    })
+  }, [])
+
+  const pauseGoal = useCallback((id) => {
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        goals: (prev.goals ?? []).map((g) =>
+          g.id === id ? { ...g, status: 'paused', updated_at: new Date().toISOString() } : g
+        ),
+      }
+    })
+  }, [])
+
+  const resumeGoal = useCallback((id) => {
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        goals: (prev.goals ?? []).map((g) =>
+          g.id === id ? { ...g, status: 'active', updated_at: new Date().toISOString() } : g
+        ),
+      }
+    })
+  }, [])
+
+  const completeGoal = useCallback((id) => {
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        goals: (prev.goals ?? []).map((g) =>
+          g.id === id
+            ? { ...g, status: 'completed', target_amount: g.saved_amount, updated_at: new Date().toISOString() }
+            : g
+        ),
+      }
+    })
+  }, [])
+
+  const processScheduledGoals = useCallback(() => {
+    const currentData = dataRef.current
+    if (!currentData?.goals?.length) return
+
+    const now = new Date()
+    const today = now.toISOString().slice(0, 10)
+    let movedAmount = 0
+    const skippedGoals = []
+    const processedGoals = []
+
+    const updatedGoals = currentData.goals.map((goal) => {
+      if (goal.status !== 'active') return goal
+      if (!goal.contribution_amount || goal.saved_amount >= goal.target_amount) return goal
+
+      const lastDate = goal.last_contribution_date || goal.start_date
+      if (!lastDate) return goal
+
+      let due = false
+      if (!goal.last_contribution_date) {
+        due = lastDate <= today
+      } else {
+        const next = new Date(lastDate)
+        if (goal.frequency === 'daily') next.setDate(next.getDate() + 1)
+        else if (goal.frequency === 'weekly') next.setDate(next.getDate() + 7)
+        else if (goal.frequency === 'monthly') next.setMonth(next.getMonth() + 1)
+        due = now >= next
+      }
+      if (!due) return goal
+
+      const remainingNeeded = goal.target_amount - goal.saved_amount
+      const contrib = Math.min(goal.contribution_amount, remainingNeeded)
+
+      if ((currentData.savings ?? 0) - movedAmount < contrib) {
+        skippedGoals.push(goal.title)
+        return goal
+      }
+
+      movedAmount += contrib
+      processedGoals.push(goal.title)
+
+      const newSaved = goal.saved_amount + contrib
+      return {
+        ...goal,
+        saved_amount: newSaved,
+        last_contribution_date: today,
+        status: newSaved >= goal.target_amount ? 'completed' : 'active',
+      }
+    })
+
+    if (movedAmount > 0) {
+      setData((prev) => ({
+        ...prev,
+        goals: updatedGoals,
+        savings: (prev.savings ?? 0) - movedAmount,
+        transfers: [
+          ...(prev.transfers ?? []),
+          {
+            id: 'transfer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            type: 'goal_contribution',
+            amount: movedAmount,
+            date: today,
+          },
+        ],
+      }))
+      console.log(`[AppContext] Auto-processed ${processedGoals.length} goals, moved ${movedAmount} from savings`)
+    }
+
+    if (skippedGoals.length > 0) {
+      showToast(`⚠️ رصيد الادخار غير كافٍ لـ: ${skippedGoals.join('، ')}`, 'warning')
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    if (data && user && isSupabaseReady() && !scheduledProcessedRef.current) {
+      scheduledProcessedRef.current = true
+      setTimeout(() => processScheduledGoals(), 500)
+    }
+  }, [data, user, processScheduledGoals])
+
   const resetToDefaults = useCallback(async () => {
     if (!user || !isSupabaseReady()) return
 
@@ -230,7 +466,7 @@ export function AppProvider({ children }) {
       budget: c.budget,
     }))
 
-    const defaults = { balance: 0, categories, transactions: [] }
+    const defaults = { balance: 0, savings: 0, categories, transactions: [], transfers: [], goals: [] }
 
     console.log('[AppContext] Resetting to defaults')
     setSyncing(true)
@@ -247,8 +483,11 @@ export function AppProvider({ children }) {
 
   const safeValue = {
     balance: data?.balance ?? 0,
+    savings: data?.savings ?? 0,
     categories: data?.categories ?? [],
     transactions: data?.transactions ?? [],
+    transfers: data?.transfers ?? [],
+    goals: data?.goals ?? [],
     totalExpenses: totalExpenses ?? 0,
     remainingBalance: remainingBalance ?? 0,
     dataLoading: dataLoading ?? true,
@@ -264,6 +503,14 @@ export function AppProvider({ children }) {
     addTransaction: wrapWithLog(addTransaction, 'addTransaction'),
     updateTransaction: wrapWithLog(updateTransaction, 'updateTransaction'),
     removeTransaction: wrapWithLog(removeTransaction, 'removeTransaction'),
+    transferToSavings: wrapWithLog(transferToSavings, 'transferToSavings'),
+    withdrawFromSavings: wrapWithLog(withdrawFromSavings, 'withdrawFromSavings'),
+    addGoal: wrapWithLog(addGoal, 'addGoal'),
+    updateGoal: wrapWithLog(updateGoal, 'updateGoal'),
+    deleteGoal: wrapWithLog(deleteGoal, 'deleteGoal'),
+    pauseGoal: wrapWithLog(pauseGoal, 'pauseGoal'),
+    resumeGoal: wrapWithLog(resumeGoal, 'resumeGoal'),
+    completeGoal: wrapWithLog(completeGoal, 'completeGoal'),
     resetToDefaults: wrapWithLog(resetToDefaults, 'resetToDefaults'),
   }
 
@@ -279,8 +526,11 @@ export function useApp() {
   if (!ctx) throw new Error('useApp must be used within AppProvider')
   return {
     balance: ctx.balance ?? 0,
+    savings: ctx.savings ?? 0,
     categories: ctx.categories ?? [],
     transactions: ctx.transactions ?? [],
+    transfers: ctx.transfers ?? [],
+    goals: ctx.goals ?? [],
     totalExpenses: ctx.totalExpenses ?? 0,
     remainingBalance: ctx.remainingBalance ?? 0,
     dataLoading: ctx.dataLoading ?? true,
@@ -296,6 +546,14 @@ export function useApp() {
     addTransaction: wrapWithLog(ctx.addTransaction, 'addTransaction'),
     updateTransaction: wrapWithLog(ctx.updateTransaction, 'updateTransaction'),
     removeTransaction: wrapWithLog(ctx.removeTransaction, 'removeTransaction'),
+    transferToSavings: wrapWithLog(ctx.transferToSavings, 'transferToSavings'),
+    withdrawFromSavings: wrapWithLog(ctx.withdrawFromSavings, 'withdrawFromSavings'),
+    addGoal: wrapWithLog(ctx.addGoal, 'addGoal'),
+    updateGoal: wrapWithLog(ctx.updateGoal, 'updateGoal'),
+    deleteGoal: wrapWithLog(ctx.deleteGoal, 'deleteGoal'),
+    pauseGoal: wrapWithLog(ctx.pauseGoal, 'pauseGoal'),
+    resumeGoal: wrapWithLog(ctx.resumeGoal, 'resumeGoal'),
+    completeGoal: wrapWithLog(ctx.completeGoal, 'completeGoal'),
     resetToDefaults: wrapWithLog(ctx.resetToDefaults, 'resetToDefaults'),
   }
 }

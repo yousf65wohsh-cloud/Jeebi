@@ -72,7 +72,7 @@ export default function TransactionList() {
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Receipt className="w-5 h-5 text-orange-500" />
@@ -92,7 +92,7 @@ export default function TransactionList() {
         ) : safeTxnList.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-6">لا توجد معاملات تطابق الفلتر</p>
         ) : (
-          <div className="space-y-2 max-h-80 overflow-y-auto">
+          <div className="space-y-2 md:max-h-80 overflow-y-auto">
             {safeTxnList.map((txn) => {
               if (!txn) return null
               const cat = getCategory(txn.categoryId)
@@ -116,21 +116,21 @@ export default function TransactionList() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1 md:gap-2 shrink-0">
                     <span className="text-sm font-bold text-red-500">
                       -{(txn?.amount ?? 0).toLocaleString('en-US')} د.ع
                     </span>
                     <button
                       onClick={() => setEditTxn(txn)}
-                      className="text-gray-300 hover:text-blue-500 cursor-pointer"
+                      className="text-gray-300 hover:text-blue-500 p-1 md:p-0 cursor-pointer"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" />
                     </button>
                     <button
                       onClick={() => txn?.id && setDeleteId(txn.id)}
-                      className="text-gray-300 hover:text-red-500 cursor-pointer"
+                      className="text-gray-300 hover:text-red-500 p-1 md:p-0 cursor-pointer"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                     </button>
                   </div>
                 </div>

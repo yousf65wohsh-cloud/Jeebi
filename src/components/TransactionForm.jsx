@@ -59,26 +59,27 @@ export default function TransactionForm() {
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6">
+        <div className="hidden md:flex items-center gap-2 mb-4">
           <PlusCircle className="w-5 h-5 text-emerald-500" />
           <h2 className="text-lg font-bold text-gray-800">مصروف جديد</h2>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="flex gap-3">
+          <div className="flex flex-col md:flex-row gap-3">
             <input
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="المبلغ"
-              className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 outline-none focus:border-emerald-400"
+              className="w-full md:flex-1 border border-gray-200 rounded-lg px-4 py-3 md:py-2.5 text-2xl md:text-base outline-none focus:border-emerald-400"
               required
               min="1"
+              autoFocus
             />
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-emerald-400 bg-white"
+              className="w-full md:w-auto border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-emerald-400 bg-white"
             >
               {(categories ?? []).map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -100,7 +101,7 @@ export default function TransactionForm() {
           />
           <button
             type="submit"
-            className="w-full bg-emerald-500 text-white py-2.5 rounded-lg font-medium hover:bg-emerald-600 cursor-pointer"
+            className="w-full bg-emerald-500 text-white py-3.5 md:py-2.5 rounded-lg font-medium text-base md:text-sm hover:bg-emerald-600 cursor-pointer"
           >
             إضافة المصروف
           </button>

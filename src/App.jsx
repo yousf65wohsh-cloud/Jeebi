@@ -46,10 +46,12 @@ import CategoryManager from './components/CategoryManager'
 import TransactionForm from './components/TransactionForm'
 import TransactionList from './components/TransactionList'
 import Reports from './components/Reports'
+import Savings from './components/Savings'
+import Goals from './components/Goals'
 import Toast from './components/Toast'
 import LoginPage from './components/LoginPage'
 import SignupPage from './components/SignupPage'
-import { LogOut, Cloud, CloudOff, Loader2 } from 'lucide-react'
+import { LogOut, Cloud, CloudOff, Loader2, Plus } from 'lucide-react'
 
 function AuthGate({ children }) {
   const { user = null, loading = true } = useAuth()
@@ -118,30 +120,65 @@ function SyncIndicator() {
 }
 
 function AppContent() {
+  const scrollToGoals = () => {
+    document.getElementById('goals')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <AppProvider>
       <Toast />
       <div className="min-h-screen bg-gray-50" dir="rtl">
         <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-          <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="max-w-4xl mx-auto px-3 py-2 md:px-4 md:py-4 flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-800">جيبي</h1>
             <SyncIndicator />
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-          <Dashboard />
-          <CategoryManager />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <TransactionForm />
-            <Reports />
+        <main className="max-w-4xl mx-auto px-3 py-3 md:px-4 md:py-6 pb-16 md:pb-0">
+          <div className="flex flex-col gap-3 md:gap-6">
+            <div className="order-1 md:order-5" id="add-expense">
+              <div className="md:grid md:grid-cols-2 md:gap-6">
+                <TransactionForm />
+                <div className="hidden md:block">
+                  <Reports />
+                </div>
+              </div>
+            </div>
+
+            <div className="order-2 md:order-1">
+              <Dashboard onGoalsClick={scrollToGoals} />
+            </div>
+
+            <div className="order-3 md:order-2">
+              <CategoryManager />
+            </div>
+
+            <div className="order-4 md:order-3" id="savings">
+              <Savings />
+            </div>
+
+            <div className="order-5 md:order-4" id="goals">
+              <Goals />
+            </div>
+
+            <div className="order-6">
+              <TransactionList />
+            </div>
           </div>
-          <TransactionList />
         </main>
 
-        <footer className="text-center py-6 text-xs text-gray-400">
+        <footer className="hidden md:block text-center py-6 text-xs text-gray-400">
           جيبي &copy; {new Date().getFullYear()} — تطبيق مفتوح المصدر
         </footer>
+
+        <button
+          onClick={() => document.getElementById('add-expense')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-emerald-600 transition-colors z-50 md:hidden cursor-pointer"
+          aria-label="إضافة مصروف"
+        >
+          <Plus size={28} />
+        </button>
       </div>
     </AppProvider>
   )
