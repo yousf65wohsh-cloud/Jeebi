@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from './AuthContext'
 import { isSupabaseReady } from '../supabase/client'
-import { loadUserData, syncToSupabase } from '../services/dataService'
+import { loadUserData, syncToSupabase, initializeUserData } from '../services/dataService'
 
 const AppContext = createContext(null)
 const STORAGE_KEY = 'jeebi_data'
@@ -11,15 +11,15 @@ function loadLocalData() {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
   } catch {}
-  return { balance: 0, categories: [], transactions: [] }
+  return null
 }
 
 const wrapWithLog = (fn, name) => {
   return (...args) => {
     if (typeof fn !== 'function') {
-      const errorMsg = `❌ Context function '${name}' is NOT a function! Type: ${typeof fn}, Value: ${JSON.stringify(fn)}, Is Array: ${Array.isArray(fn)}, Constructor: ${fn?.constructor?.name}`;
+      const errorMsg = `Context function '${name}' is NOT a function! Type: ${typeof fn}, Value: ${JSON.stringify(fn)}, Is Array: ${Array.isArray(fn)}, Constructor: ${fn?.constructor?.name}`;
       console.error(errorMsg, fn);
-      console.error(`Stack trace:`, new Error().stack);
+      console.error('Stack trace:', new Error().stack);
       throw new Error(errorMsg);
     }
     return fn(...args);
@@ -27,52 +27,79 @@ const wrapWithLog = (fn, name) => {
 };
 
 const DEFAULT_CATEGORIES = [
-  { id: 'cat_1', name: 'إيجار', color: '#ef4444', budget: 0 },
-  { id: 'cat_2', name: 'إنترنت', color: '#3b82f6', budget: 0 },
-  { id: 'cat_3', name: 'مطاعم', color: '#f59e0b', budget: 0 },
-  { id: 'cat_4', name: 'مواصلات', color: '#10b981', budget: 0 },
-  { id: 'cat_5', name: 'تسوق', color: '#ec4899', budget: 0 },
-  { id: 'cat_6', name: 'أخرى', color: '#8b5cf6', budget: 0 },
+  { name: 'إيجار', color: '#ef4444', budget: 0 },
+  { name: 'إنترنت', color: '#3b82f6', budget: 0 },
+  { name: 'مطاعم', color: '#f59e0b', budget: 0 },
+  { name: 'مواصلات', color: '#10b981', budget: 0 },
+  { name: 'تسوق', color: '#ec4899', budget: 0 },
+  { name: 'أخرى', color: '#8b5cf6', budget: 0 },
 ]
 
 export function AppProvider({ children }) {
   const { user } = useAuth()
-  const [data, setData] = useState(loadLocalData)
+  const [data, setData] = useState(null)
+  const [dataLoading, setDataLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
   const syncTimer = useRef(null)
 
   useEffect(() => {
-    if (!user || !isSupabaseReady()) return
+    if (!user) {
+      console.log('[AppContext] No user — showing auth pages')
+      setData(null)
+      setDataLoading(false)
+      return
+    }
 
-    loadUserData(user.id).then((remote) => {
-      if (remote) {
-        setData({
-          balance: remote.balance ?? 0,
-          categories: Array.isArray(remote.categories) ? remote.categories : [],
-          transactions: Array.isArray(remote.transactions) ? remote.transactions : [],
-        })
-      }
-    }).catch((err) => {
-      console.warn('Failed to load from Supabase, using local data:', err.message)
-    })
+    if (!isSupabaseReady()) {
+      console.log('[AppContext] Supabase not configured — falling back to LocalStorage')
+      const local = loadLocalData()
+      setData(local || { balance: 0, categories: [], transactions: [] })
+      setDataLoading(false)
+      return
+    }
+
+    console.log(`[AppContext] Loading data for user ${user.id}`)
+    setDataLoading(true)
+
+    loadUserData(user.id)
+      .then((remote) => {
+        if (remote === null) {
+          console.log('[AppContext] First-time user — initializing defaults')
+          return initializeUserData(user.id).then((defaults) => {
+            setData(defaults)
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults))
+          })
+        }
+        console.log(`[AppContext] Loaded remote data: ${remote.categories.length} categories, ${remote.transactions.length} transactions`)
+        setData(remote)
+      })
+      .catch((err) => {
+        console.error('[AppContext] Failed to load from Supabase:', err)
+        const local = loadLocalData()
+        if (local) {
+          console.log('[AppContext] Falling back to LocalStorage cache')
+          setData(local)
+        } else {
+          setData({ balance: 0, categories: [], transactions: [] })
+        }
+      })
+      .finally(() => {
+        setDataLoading(false)
+      })
   }, [user?.id])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  }, [data])
-
-  useEffect(() => {
-    if (!user || !isSupabaseReady()) return
+    if (!data || !user || !isSupabaseReady()) return
 
     if (syncTimer.current) clearTimeout(syncTimer.current)
     syncTimer.current = setTimeout(async () => {
       setSyncing(true)
       try {
-        await syncToSupabase(user.id)
+        await syncToSupabase(user.id, data)
       } catch (err) {
-        console.warn('Supabase sync failed:', err.message)
+        console.error('[AppContext] Sync failed:', err)
       } finally {
         setSyncing(false)
       }
@@ -83,10 +110,17 @@ export function AppProvider({ children }) {
     }
   }, [data, user?.id])
 
-  const totalExpenses = (data.transactions ?? []).reduce((s, t) => s + (t.amount ?? 0), 0)
-  const remainingBalance = (data.balance ?? 0) - totalExpenses
+  useEffect(() => {
+    if (data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    }
+  }, [data])
+
+  const totalExpenses = data ? (data.transactions ?? []).reduce((s, t) => s + (t.amount ?? 0), 0) : 0
+  const remainingBalance = data ? (data.balance ?? 0) - totalExpenses : 0
 
   const getCatStats = useCallback((catId) => {
+    if (!data) return { budget: 0, spent: 0, remaining: 0, pct: 0, cat: null }
     const cat = (data.categories ?? []).find((c) => c.id === catId)
     const spent = (data.transactions ?? [])
       .filter((t) => t.categoryId === catId)
@@ -98,7 +132,7 @@ export function AppProvider({ children }) {
       pct: cat?.budget > 0 ? (spent / cat.budget) * 100 : 0,
       cat,
     }
-  }, [data.categories, data.transactions])
+  }, [data?.categories, data?.transactions])
 
   const showToast = useCallback((message, type = 'warning') => {
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -112,71 +146,112 @@ export function AppProvider({ children }) {
   }, [])
 
   const setBalance = useCallback((amount) => {
-    setData((prev) => ({ ...prev, balance: amount }))
+    setData((prev) => prev ? { ...prev, balance: amount } : { balance: amount, categories: [], transactions: [] })
   }, [])
 
   const addCategory = useCallback((name, color, budget) => {
-    const id = 'cat_' + Date.now()
-    setData((prev) => ({
-      ...prev,
-      categories: [...(prev.categories ?? []), { id, name, color, budget: budget || 0 }],
-    }))
+    const id = 'cat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
+    setData((prev) => {
+      const base = prev || { balance: 0, categories: [], transactions: [] }
+      return {
+        ...base,
+        categories: [...(base.categories ?? []), { id, name, color, budget: budget || 0 }],
+      }
+    })
     return id
   }, [])
 
   const updateCategoryBudget = useCallback((id, budget) => {
-    setData((prev) => ({
-      ...prev,
-      categories: (prev.categories ?? []).map((c) =>
-        c.id === id ? { ...c, budget: budget || 0 } : c
-      ),
-    }))
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        categories: (prev.categories ?? []).map((c) =>
+          c.id === id ? { ...c, budget: budget || 0 } : c
+        ),
+      }
+    })
   }, [])
 
   const removeCategory = useCallback((id) => {
-    setData((prev) => ({
-      ...prev,
-      categories: (prev.categories ?? []).filter((c) => c.id !== id),
-    }))
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        categories: (prev.categories ?? []).filter((c) => c.id !== id),
+      }
+    })
   }, [])
 
   const addTransaction = useCallback((amount, categoryId, description, date) => {
-    const id = 'txn_' + Date.now()
-    setData((prev) => ({
-      ...prev,
-      transactions: [
-        { id, amount, categoryId, description, date: date || new Date().toISOString() },
-        ...(prev.transactions ?? []),
-      ],
-    }))
+    const id = 'txn_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
+    setData((prev) => {
+      const base = prev || { balance: 0, categories: [], transactions: [] }
+      return {
+        ...base,
+        transactions: [
+          { id, amount, categoryId, description, date: date || new Date().toISOString() },
+          ...(base.transactions ?? []),
+        ],
+      }
+    })
   }, [])
 
   const updateTransaction = useCallback((id, updates) => {
-    setData((prev) => ({
-      ...prev,
-      transactions: (prev.transactions ?? []).map((t) =>
-        t.id === id ? { ...t, ...updates } : t
-      ),
-    }))
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        transactions: (prev.transactions ?? []).map((t) =>
+          t.id === id ? { ...t, ...updates } : t
+        ),
+      }
+    })
   }, [])
 
   const removeTransaction = useCallback((id) => {
-    setData((prev) => ({
-      ...prev,
-      transactions: (prev.transactions ?? []).filter((t) => t.id !== id),
-    }))
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        transactions: (prev.transactions ?? []).filter((t) => t.id !== id),
+      }
+    })
   }, [])
 
-  const resetToDefaults = useCallback(() => {
-    setData({ balance: 0, categories: [...DEFAULT_CATEGORIES], transactions: [] })
-  }, [])
+  const resetToDefaults = useCallback(async () => {
+    if (!user || !isSupabaseReady()) return
+
+    const timestamp = Date.now()
+    const categories = DEFAULT_CATEGORIES.map((c, i) => ({
+      id: `cat_${timestamp}_${i}`,
+      name: c.name,
+      color: c.color,
+      budget: c.budget,
+    }))
+
+    const defaults = { balance: 0, categories, transactions: [] }
+
+    console.log('[AppContext] Resetting to defaults')
+    setSyncing(true)
+    try {
+      await syncToSupabase(user.id, defaults)
+      setData(defaults)
+      console.log('[AppContext] Reset complete')
+    } catch (err) {
+      console.error('[AppContext] Reset failed:', err)
+    } finally {
+      setSyncing(false)
+    }
+  }, [user?.id])
 
   const safeValue = {
-    balance: data.balance ?? 0,
-    categories: data.categories ?? [],
-    transactions: data.transactions ?? [],
+    balance: data?.balance ?? 0,
+    categories: data?.categories ?? [],
+    transactions: data?.transactions ?? [],
     totalExpenses: totalExpenses ?? 0,
     remainingBalance: remainingBalance ?? 0,
+    dataLoading: dataLoading ?? true,
     syncing: syncing ?? false,
     toast: toast ?? null,
     showToast: wrapWithLog(showToast, 'showToast'),
@@ -208,6 +283,7 @@ export function useApp() {
     transactions: ctx.transactions ?? [],
     totalExpenses: ctx.totalExpenses ?? 0,
     remainingBalance: ctx.remainingBalance ?? 0,
+    dataLoading: ctx.dataLoading ?? true,
     syncing: ctx.syncing ?? false,
     toast: ctx.toast ?? null,
     showToast: wrapWithLog(ctx.showToast, 'showToast'),
