@@ -13,8 +13,8 @@ function safeDate(dateStr) {
 }
 
 function applyFilters(raw, filters) {
-  const f = filters ?? {}
-  let list = raw ?? []
+  let list = Array.isArray(raw) ? raw : []
+  const f = typeof filters === 'object' && filters !== null ? filters : {}
 
   if (f.search) {
     const q = f.search.toLowerCase()
@@ -51,9 +51,16 @@ export default function TransactionList() {
 
   const getCategory = (id) => (categories ?? []).find((c) => c.id === id)
 
+  console.log('[TransactionList] useMemo deps:', {
+    transactionsType: typeof transactions,
+    isArray: Array.isArray(transactions),
+    filtersType: typeof filters,
+    isObject: typeof filters === 'object' && filters !== null,
+  })
+
   const filtered = useMemo(
     () => applyFilters(transactions, filters),
-    [transactions, filters]
+    [JSON.stringify(transactions), JSON.stringify(filters)]
   )
 
   const hasFilters = Object.values(filters).some((v) => v !== '')
