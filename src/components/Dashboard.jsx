@@ -67,7 +67,7 @@ export default function Dashboard() {
           <PiggyBank className="w-5 h-5 text-green-500" />
         </div>
         <div
-          className={`text-2xl font-bold ${remainingBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}
+          className={`text-2xl font-bold ${(remainingBalance ?? 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}
         >
           {(remainingBalance ?? 0).toLocaleString('en-US')} د.ع
         </div>

@@ -70,10 +70,10 @@ export function AppProvider({ children }) {
   }, [data, user?.id])
 
   const totalExpenses = (data.transactions ?? []).reduce((s, t) => s + t.amount, 0)
-  const remainingBalance = data.balance - totalExpenses
+  const remainingBalance = (data.balance ?? 0) - totalExpenses
 
   const getCatStats = useCallback((catId) => {
-    const cat = data.categories.find((c) => c.id === catId)
+    const cat = (data.categories ?? []).find((c) => c.id === catId)
     const spent = (data.transactions ?? [])
       .filter((t) => t.categoryId === catId)
       .reduce((s, t) => s + t.amount, 0)

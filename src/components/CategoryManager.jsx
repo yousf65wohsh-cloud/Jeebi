@@ -22,8 +22,8 @@ export default function CategoryManager() {
 
   const catTxns = useMemo(() => {
     const map = {}
-    categories.forEach((c) => { map[c.id] = [] })
-    transactions.forEach((t) => {
+    (categories ?? []).forEach((c) => { map[c.id] = [] })
+    (transactions ?? []).forEach((t) => {
       if (map[t.categoryId]) map[t.categoryId].push(t)
     })
     return map
@@ -104,11 +104,11 @@ export default function CategoryManager() {
           </div>
         )}
 
-        {categories.length === 0 ? (
+        {(categories ?? []).length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-6">لا توجد محفظات بعد</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {categories.map((cat) => {
+            {(categories ?? []).map((cat) => {
               const stats = getCatStats(cat.id)
               const pct = stats.budget > 0 ? Math.min((stats.spent / stats.budget) * 100, 100) : 0
               const txns = catTxns[cat.id] || []

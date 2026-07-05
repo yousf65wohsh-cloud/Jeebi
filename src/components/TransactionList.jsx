@@ -8,7 +8,7 @@ export default function TransactionList() {
   const [editTxn, setEditTxn] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
 
-  const getCategory = (id) => categories.find((c) => c.id === id)
+  const getCategory = (id) => (categories ?? []).find((c) => c.id === id)
 
   const confirmDelete = () => {
     if (deleteId) {
@@ -24,11 +24,11 @@ export default function TransactionList() {
           <Receipt className="w-5 h-5 text-orange-500" />
           <h2 className="text-lg font-bold text-gray-800">آخر المعاملات</h2>
         </div>
-        {transactions.length === 0 ? (
+        {(transactions ?? []).length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-6">لا توجد معاملات بعد</p>
         ) : (
           <div className="space-y-2 max-h-80 overflow-y-auto">
-            {transactions.map((txn) => {
+            {(transactions ?? []).map((txn) => {
               const cat = getCategory(txn.categoryId)
               return (
                 <div

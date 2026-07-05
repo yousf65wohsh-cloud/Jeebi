@@ -57,7 +57,7 @@ export default function EditTransactionModal({ transaction, onClose }) {
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 outline-none focus:border-blue-400 bg-white"
             >
-              {categories.map((cat) => (
+              {(categories ?? []).map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>

@@ -11,7 +11,7 @@ export default function TransactionForm() {
   const [overConfirm, setOverConfirm] = useState(null)
 
   useEffect(() => {
-    if (!categoryId && categories.length > 0) setCategoryId(categories[0].id)
+    if (!categoryId && (categories ?? []).length > 0) setCategoryId(categories[0].id)
   }, [categories])
 
   const doSubmit = (force) => {
@@ -76,7 +76,7 @@ export default function TransactionForm() {
               onChange={(e) => setCategoryId(e.target.value)}
               className="border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-emerald-400 bg-white"
             >
-              {categories.map((cat) => (
+              {(categories ?? []).map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
