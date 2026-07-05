@@ -666,61 +666,16 @@ export async function syncToSupabase(userId, data) {
       updated_at: new Date().toISOString(),
     }
 
-    logSeparator()
-    console.error('  GOAL UPSERT — ID: ' + goal.id)
-    logSeparator()
-    console.error('  Goal payload:')
-    logObject('Full JSON', goal)
-    logSeparator()
-    console.error('  Supabase payload:')
-    logObject('Full JSON', payload)
-    logSeparator()
+    console.log("GOAL OBJECT", JSON.stringify(goal, null, 2))
+    console.log("PAYLOAD TO SUPABASE", JSON.stringify(payload, null, 2))
 
     const result = await supabase.from('goals').upsert(payload, { onConflict: 'id' })
 
-    logSeparator()
-    console.error('  Supabase response:')
-    logObject('Full JSON', { data: result.data, status: result.status, statusText: result.statusText })
-    logSeparator()
+    console.log("UPSERT RESULT", JSON.stringify(result, null, 2))
 
     if (result.error) {
-      logSeparator()
-      console.error('  Error code:')
-      logField('code', result.error.code)
-      logSeparator()
-      console.error('  Error message:')
-      logField('message', result.error.message)
-      logSeparator()
-      console.error('  Error details:')
-      logField('details', result.error.details)
-      logSeparator()
-      console.error('  Error hint:')
-      logField('hint', result.error.hint)
-      logSeparator()
-      console.error('  Error status:')
-      logField('status', result.error.status || result.error.statusCode || 'N/A')
-      logSeparator()
-      console.error('  Full error (JSON.stringify):')
-      console.error(JSON.stringify(result.error, null, 2))
-      logSeparator()
-      console.error('  Error toString():')
-      console.error(result.error.toString())
-      logSeparator()
-      console.error('  Error constructor:')
-      logField('constructor', result.error?.constructor?.name)
-      logField('typeof', typeof result.error)
-      logSeparator()
-      console.error('  All keys on error object:')
-      if (result.error) {
-        Object.keys(result.error).forEach(key => {
-          const val = result.error[key]
-          const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val)
-          logField(key, valStr)
-        })
-      }
-      logSeparator()
+      console.error("GOAL UPSERT ERROR", JSON.stringify(result.error, null, 2))
     } else {
-      console.error('  No error — upsert succeeded')
       console.log(`[dataService] Upserted goal ${goal.id}: "${goal.title}"`)
     }
   }
