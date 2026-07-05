@@ -6,8 +6,8 @@ export default function Reports() {
   const { transactions, categories } = useApp()
 
   const dataMap = {}
-  transactions.forEach((txn) => {
-    const cat = categories.find((c) => c.id === txn.categoryId)
+  ;(transactions ?? []).forEach((txn) => {
+    const cat = (categories ?? []).find((c) => c.id === txn.categoryId)
     const name = cat?.name || 'غير محدد'
     const color = cat?.color || '#9ca3af'
     if (!dataMap[name]) dataMap[name] = { name, value: 0, color }
