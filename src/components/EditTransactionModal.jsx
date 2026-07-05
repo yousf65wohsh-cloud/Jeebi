@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 export default function EditTransactionModal({ transaction, onClose }) {
-  const { categories, updateTransaction } = useApp()
+  const { categories = [], updateTransaction = () => {} } = useApp()
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [date, setDate] = useState('')

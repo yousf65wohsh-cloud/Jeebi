@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext'
 import { useState } from 'react'
 
 export default function Dashboard() {
-  const { balance, remainingBalance, totalExpenses, setBalance } = useApp()
+  const { balance = 0, remainingBalance = 0, totalExpenses = 0, setBalance = () => {} } = useApp()
   const [editing, setEditing] = useState(false)
   const [inputVal, setInputVal] = useState('')
 

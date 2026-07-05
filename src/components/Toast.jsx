@@ -14,7 +14,7 @@ const ICON_COLORS = {
 }
 
 export default function Toast() {
-  const { toast, hideToast } = useApp()
+  const { toast = null, hideToast = () => {} } = useApp()
 
   if (!toast) return null
 

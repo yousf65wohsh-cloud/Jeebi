@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { UserPlus, Eye, EyeOff } from 'lucide-react'
 
 export default function SignupPage({ onSwitchToLogin }) {
-  const { signUp, error, clearError } = useAuth()
+  const { signUp = async () => false, error = null, clearError = () => {} } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
@@ -14,7 +14,7 @@ export default function SignupPage({ onSwitchToLogin }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    clearError()
+    if (typeof clearError === 'function') clearError()
     setLocalError(null)
 
     if (password !== confirmPw) {
@@ -23,7 +23,7 @@ export default function SignupPage({ onSwitchToLogin }) {
     }
 
     setSubmitting(true)
-    const ok = await signUp(email, password)
+    const ok = typeof signUp === 'function' ? await signUp(email, password) : false
     setSubmitting(false)
 
     if (ok) {

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Plus, Trash2, Tag, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { formatSafeDate } from '../services/utils'
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
 
@@ -11,7 +12,7 @@ function barColor(pct) {
 }
 
 export default function CategoryManager() {
-  const { categories, transactions, addCategory, updateCategoryBudget, removeCategory, addTransaction, getCatStats, showToast } = useApp()
+  const { categories = [], transactions = [], addCategory = () => {}, updateCategoryBudget = () => {}, removeCategory = () => {}, addTransaction = () => {}, getCatStats = () => ({ budget: 0, spent: 0, remaining: 0, pct: 0, cat: null }), showToast = () => {} } = useApp()
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [color, setColor] = useState('#3b82f6')
@@ -19,6 +20,14 @@ export default function CategoryManager() {
   const [expandedId, setExpandedId] = useState(null)
   const [txnForm, setTxnForm] = useState({ catId: null, amount: '', date: '', description: '' })
   const [overConfirm, setOverConfirm] = useState(null)
+
+  console.log('[CategoryManager] useMemo before:', {
+    categoriesType: typeof categories, isArrayCategories: Array.isArray(categories),
+    transactionsType: typeof transactions, isArrayTransactions: Array.isArray(transactions),
+    addCategoryType: typeof addCategory,
+    getCatStatsType: typeof getCatStats,
+    showToastType: typeof showToast,
+  })
 
   const catTxns = useMemo(() => {
     if (!Array.isArray(categories) || !Array.isArray(transactions)) return {}
@@ -31,7 +40,7 @@ export default function CategoryManager() {
   }, [categories, transactions])
 
   const handleAdd = () => {
-    if (!name.trim()) return
+    if (!(name?.trim())) return
     if (typeof addCategory === 'function') addCategory(name.trim(), color, parseFloat(budget) || 0)
     setName('')
     setColor('#3b82f6')
@@ -40,14 +49,14 @@ export default function CategoryManager() {
   }
 
   const doAddTxn = (catId) => {
-    const val = parseFloat(txnForm.amount)
+    const val = parseFloat(txnForm?.amount ?? '')
     if (isNaN(val) || val <= 0) return
     const stats = typeof getCatStats === 'function' ? getCatStats(catId) : { budget: 0, spent: 0, remaining: 0, cat: null }
     if (stats.budget > 0 && val > stats.remaining) {
-      setOverConfirm({ catId, amount: val, description: txnForm.description, date: txnForm.date })
+      setOverConfirm({ catId, amount: val, description: txnForm?.description ?? '', date: txnForm?.date ?? '' })
       return
     }
-    if (typeof addTransaction === 'function') addTransaction(val, catId, txnForm.description, new Date(txnForm.date || new Date()).toISOString())
+    if (typeof addTransaction === 'function') addTransaction(val, catId, txnForm?.description ?? '', new Date(txnForm?.date || new Date()).toISOString())
     const newPct = stats.budget > 0 ? ((stats.spent + val) / stats.budget) * 100 : 0
     if (newPct >= 90 && typeof showToast === 'function') {
       showToast(`⚠️ لقد استهلكت ${newPct.toFixed(0)}% من رصيد ${stats.cat?.name}`, 'warning')
@@ -57,8 +66,9 @@ export default function CategoryManager() {
 
   const confirmOverBudget = () => {
     if (!overConfirm) return
-    if (typeof addTransaction === 'function') addTransaction(overConfirm.amount, overConfirm.catId, overConfirm.description, new Date(overConfirm.date || new Date()).toISOString())
-    const stats = typeof getCatStats === 'function' ? getCatStats(overConfirm.catId) : { budget: 0, spent: 0, remaining: 0, cat: null }
+    const oc = overConfirm
+    if (typeof addTransaction === 'function') addTransaction(oc.amount ?? 0, oc.catId ?? '', oc.description ?? '', new Date(oc.date || new Date()).toISOString())
+    const stats = typeof getCatStats === 'function' ? getCatStats(oc.catId ?? '') : { budget: 0, spent: 0, remaining: 0, cat: null }
     if (typeof showToast === 'function') showToast(`⚠️ تم تجاوز رصيد ${stats.cat?.name}`, 'danger')
     setOverConfirm(null)
     setTxnForm({ catId: null, amount: '', date: '', description: '' })
@@ -112,7 +122,7 @@ export default function CategoryManager() {
             {(categories ?? []).map((cat) => {
               const stats = typeof getCatStats === 'function' ? getCatStats(cat.id) : { budget: 0, spent: 0, remaining: 0, cat: null }
               const pct = stats.budget > 0 ? Math.min((stats.spent / stats.budget) * 100, 100) : 0
-              const txns = catTxns[cat.id] || []
+              const txns = catTxns?.[cat.id] ?? []
               return (
                 <div key={cat.id} className="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow">
                   <div className="flex items-center justify-between mb-3">
@@ -195,13 +205,13 @@ export default function CategoryManager() {
                         <p className="text-xs text-gray-400 text-center py-3">لا توجد معاملات</p>
                       ) : (
                         <div className="space-y-1 max-h-48 overflow-y-auto">
-                          {txns.map((txn) => (
-                            <div key={txn.id} className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded-lg text-xs">
+                          {(txns ?? []).map((txn) => (
+                            <div key={txn?.id ?? Math.random()} className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded-lg text-xs">
                               <div className="flex items-center gap-2">
-                                <span className="text-gray-400">{new Date(txn.date).toLocaleDateString('en-US')}</span>
-                                {txn.description && <span className="text-gray-500 truncate max-w-24">{txn.description}</span>}
+                                <span className="text-gray-400">{formatSafeDate(txn?.date)}</span>
+                                {txn?.description && <span className="text-gray-500 truncate max-w-24">{txn.description}</span>}
                               </div>
-                              <span className="font-medium text-red-500">-{(txn.amount ?? 0).toLocaleString('en-US')} د.ع</span>
+                              <span className="font-medium text-red-500">-{(txn?.amount ?? 0).toLocaleString('en-US')} د.ع</span>
                             </div>
                           ))}
                         </div>

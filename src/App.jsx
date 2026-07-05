@@ -1,6 +1,45 @@
-import { useState } from 'react'
+import { useState, Component } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppProvider, useApp } from './context/AppContext'
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null, errorInfo: null }
+  }
+  static getDerivedStateFromError(error) { return { hasError: true, error } }
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary caught:', error, errorInfo)
+    this.setState({ errorInfo })
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div dir="rtl" className="min-h-screen bg-red-50 flex items-center justify-center p-8">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8 border border-red-200">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">⚠️ حدث خطأ</h2>
+            <p className="text-gray-600 mb-4 font-arabic">تم اكتشاف خطأ في التطبيق:</p>
+            <pre className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-700 overflow-auto max-h-60 whitespace-pre-wrap">
+              {this.state.error?.toString()}
+            </pre>
+            {this.state.error?.stack && (
+              <pre className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-xs text-gray-600 overflow-auto max-h-96 mt-3 whitespace-pre-wrap font-mono">
+                {this.state.error.stack}
+              </pre>
+            )}
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 bg-red-500 text-white px-6 py-2.5 rounded-lg hover:bg-red-600 cursor-pointer"
+            >
+              إعادة تحميل الصفحة
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 import { isSupabaseReady } from './supabase/client'
 import Dashboard from './components/Dashboard'
 import CategoryManager from './components/CategoryManager'
@@ -13,7 +52,7 @@ import SignupPage from './components/SignupPage'
 import { LogOut, Cloud, CloudOff, Loader2 } from 'lucide-react'
 
 function AuthGate({ children }) {
-  const { user, loading } = useAuth()
+  const { user = null, loading = true } = useAuth()
   const [page, setPage] = useState('login')
 
   if (loading) {
@@ -44,7 +83,7 @@ function SyncIndicator() {
     syncing = useApp()?.syncing ?? false
   } catch { /* AppProvider not ready yet */ }
 
-  const { user, signOut } = useAuth()
+  const { user = null, signOut = async () => {} } = useAuth()
 
   if (!user) return null
 
@@ -112,7 +151,9 @@ export default function App() {
   return (
     <AuthProvider>
       <AuthGate>
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </AuthGate>
     </AuthProvider>
   )

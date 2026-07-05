@@ -1,16 +1,9 @@
 import { useState, useMemo } from 'react'
 import { Trash2, Receipt, Pencil, AlertTriangle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { formatSafeDate } from '../services/utils'
 import EditTransactionModal from './EditTransactionModal'
 import FilterBar from './FilterBar'
-
-function safeDate(dateStr) {
-  try {
-    const d = new Date(dateStr)
-    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US')
-  } catch {}
-  return ''
-}
 
 function applyFilters(raw, filters) {
   let list = Array.isArray(raw) ? raw : []
@@ -44,18 +37,18 @@ function applyFilters(raw, filters) {
 const INITIAL_FILTERS = { search: '', categoryId: '', dateFrom: '', dateTo: '', amountMin: '', amountMax: '' }
 
 export default function TransactionList() {
-  const { transactions, categories, removeTransaction } = useApp()
+  const { transactions = [], categories = [], removeTransaction = () => {} } = useApp()
   const [editTxn, setEditTxn] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
   const [filters, setFilters] = useState(INITIAL_FILTERS)
 
   const getCategory = (id) => (categories ?? []).find((c) => c.id === id)
 
-  console.log('[TransactionList] useMemo deps:', {
-    transactionsType: typeof transactions,
-    isArray: Array.isArray(transactions),
-    filtersType: typeof filters,
-    isObject: typeof filters === 'object' && filters !== null,
+  console.log('[TransactionList] useMemo before:', {
+    transactionsType: typeof transactions, isArray: Array.isArray(transactions),
+    filtersType: typeof filters, isObject: typeof filters === 'object' && filters !== null,
+    removeTransactionType: typeof removeTransaction,
+    getCategoryType: typeof getCategory,
   })
 
   const filtered = useMemo(
@@ -101,10 +94,11 @@ export default function TransactionList() {
         ) : (
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {safeTxnList.map((txn) => {
+              if (!txn) return null
               const cat = getCategory(txn.categoryId)
               return (
                 <div
-                  key={txn.id}
+                  key={txn.id ?? Math.random()}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -117,14 +111,14 @@ export default function TransactionList() {
                         {cat?.name || 'غير محدد'}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-gray-400">
-                        {txn.description && <span className="truncate">{txn.description}</span>}
-                        {txn.date && <span>{safeDate(txn.date)}</span>}
+                        {txn?.description && <span className="truncate">{txn.description}</span>}
+                        {txn?.date && <span>{formatSafeDate(txn.date)}</span>}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-sm font-bold text-red-500">
-                      -{(txn.amount ?? 0).toLocaleString('en-US')} د.ع
+                      -{(txn?.amount ?? 0).toLocaleString('en-US')} د.ع
                     </span>
                     <button
                       onClick={() => setEditTxn(txn)}
@@ -133,7 +127,7 @@ export default function TransactionList() {
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => setDeleteId(txn.id)}
+                      onClick={() => txn?.id && setDeleteId(txn.id)}
                       className="text-gray-300 hover:text-red-500 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />

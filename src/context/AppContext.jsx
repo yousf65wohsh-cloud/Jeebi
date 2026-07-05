@@ -3,7 +3,7 @@ import { useAuth } from './AuthContext'
 import { isSupabaseReady } from '../supabase/client'
 import { loadUserData, syncToSupabase } from '../services/dataService'
 
-const AppContext = createContext()
+const AppContext = createContext(null)
 const STORAGE_KEY = 'jeebi_data'
 
 function loadLocalData() {
@@ -13,6 +13,18 @@ function loadLocalData() {
   } catch {}
   return { balance: 0, categories: [], transactions: [] }
 }
+
+const wrapWithLog = (fn, name) => {
+  return (...args) => {
+    if (typeof fn !== 'function') {
+      const errorMsg = `❌ Context function '${name}' is NOT a function! Type: ${typeof fn}, Value: ${JSON.stringify(fn)}, Is Array: ${Array.isArray(fn)}, Constructor: ${fn?.constructor?.name}`;
+      console.error(errorMsg, fn);
+      console.error(`Stack trace:`, new Error().stack);
+      throw new Error(errorMsg);
+    }
+    return fn(...args);
+  };
+};
 
 const DEFAULT_CATEGORIES = [
   { id: 'cat_1', name: 'إيجار', color: '#ef4444', budget: 0 },
@@ -25,30 +37,32 @@ const DEFAULT_CATEGORIES = [
 
 export function AppProvider({ children }) {
   const { user } = useAuth()
-  const [data, setData] = useState(() => loadLocalData)
+  const [data, setData] = useState(loadLocalData)
   const [syncing, setSyncing] = useState(false)
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
   const syncTimer = useRef(null)
-  const mounted = useRef(false)
 
-  // On mount: load from Supabase if user is authenticated
   useEffect(() => {
     if (!user || !isSupabaseReady()) return
 
     loadUserData(user.id).then((remote) => {
-      if (remote) setData(remote)
+      if (remote) {
+        setData({
+          balance: remote.balance ?? 0,
+          categories: Array.isArray(remote.categories) ? remote.categories : [],
+          transactions: Array.isArray(remote.transactions) ? remote.transactions : [],
+        })
+      }
     }).catch((err) => {
       console.warn('Failed to load from Supabase, using local data:', err.message)
     })
   }, [user?.id])
 
-  // Persist to LocalStorage on every data change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   }, [data])
 
-  // Debounced sync: push data to Supabase 1.5s after last change
   useEffect(() => {
     if (!user || !isSupabaseReady()) return
 
@@ -69,14 +83,14 @@ export function AppProvider({ children }) {
     }
   }, [data, user?.id])
 
-  const totalExpenses = (data.transactions ?? []).reduce((s, t) => s + t.amount, 0)
+  const totalExpenses = (data.transactions ?? []).reduce((s, t) => s + (t.amount ?? 0), 0)
   const remainingBalance = (data.balance ?? 0) - totalExpenses
 
   const getCatStats = useCallback((catId) => {
     const cat = (data.categories ?? []).find((c) => c.id === catId)
     const spent = (data.transactions ?? [])
       .filter((t) => t.categoryId === catId)
-      .reduce((s, t) => s + t.amount, 0)
+      .reduce((s, t) => s + (t.amount ?? 0), 0)
     return {
       budget: cat?.budget || 0,
       spent,
@@ -105,7 +119,7 @@ export function AppProvider({ children }) {
     const id = 'cat_' + Date.now()
     setData((prev) => ({
       ...prev,
-      categories: [...prev.categories, { id, name, color, budget: budget || 0 }],
+      categories: [...(prev.categories ?? []), { id, name, color, budget: budget || 0 }],
     }))
     return id
   }, [])
@@ -113,7 +127,7 @@ export function AppProvider({ children }) {
   const updateCategoryBudget = useCallback((id, budget) => {
     setData((prev) => ({
       ...prev,
-      categories: prev.categories.map((c) =>
+      categories: (prev.categories ?? []).map((c) =>
         c.id === id ? { ...c, budget: budget || 0 } : c
       ),
     }))
@@ -122,7 +136,7 @@ export function AppProvider({ children }) {
   const removeCategory = useCallback((id) => {
     setData((prev) => ({
       ...prev,
-      categories: prev.categories.filter((c) => c.id !== id),
+      categories: (prev.categories ?? []).filter((c) => c.id !== id),
     }))
   }, [])
 
@@ -132,7 +146,7 @@ export function AppProvider({ children }) {
       ...prev,
       transactions: [
         { id, amount, categoryId, description, date: date || new Date().toISOString() },
-        ...prev.transactions,
+        ...(prev.transactions ?? []),
       ],
     }))
   }, [])
@@ -140,7 +154,7 @@ export function AppProvider({ children }) {
   const updateTransaction = useCallback((id, updates) => {
     setData((prev) => ({
       ...prev,
-      transactions: prev.transactions.map((t) =>
+      transactions: (prev.transactions ?? []).map((t) =>
         t.id === id ? { ...t, ...updates } : t
       ),
     }))
@@ -149,7 +163,7 @@ export function AppProvider({ children }) {
   const removeTransaction = useCallback((id) => {
     setData((prev) => ({
       ...prev,
-      transactions: prev.transactions.filter((t) => t.id !== id),
+      transactions: (prev.transactions ?? []).filter((t) => t.id !== id),
     }))
   }, [])
 
@@ -157,27 +171,29 @@ export function AppProvider({ children }) {
     setData({ balance: 0, categories: [...DEFAULT_CATEGORIES], transactions: [] })
   }, [])
 
+  const safeValue = {
+    balance: data.balance ?? 0,
+    categories: data.categories ?? [],
+    transactions: data.transactions ?? [],
+    totalExpenses: totalExpenses ?? 0,
+    remainingBalance: remainingBalance ?? 0,
+    syncing: syncing ?? false,
+    toast: toast ?? null,
+    showToast: wrapWithLog(showToast, 'showToast'),
+    hideToast: wrapWithLog(hideToast, 'hideToast'),
+    getCatStats: wrapWithLog(getCatStats, 'getCatStats'),
+    setBalance: wrapWithLog(setBalance, 'setBalance'),
+    addCategory: wrapWithLog(addCategory, 'addCategory'),
+    updateCategoryBudget: wrapWithLog(updateCategoryBudget, 'updateCategoryBudget'),
+    removeCategory: wrapWithLog(removeCategory, 'removeCategory'),
+    addTransaction: wrapWithLog(addTransaction, 'addTransaction'),
+    updateTransaction: wrapWithLog(updateTransaction, 'updateTransaction'),
+    removeTransaction: wrapWithLog(removeTransaction, 'removeTransaction'),
+    resetToDefaults: wrapWithLog(resetToDefaults, 'resetToDefaults'),
+  }
+
   return (
-    <AppContext.Provider
-      value={{
-        ...data,
-        totalExpenses,
-        remainingBalance,
-        syncing,
-        toast,
-        showToast,
-        hideToast,
-        getCatStats,
-        setBalance,
-        addCategory,
-        updateCategoryBudget,
-        removeCategory,
-        addTransaction,
-        updateTransaction,
-        removeTransaction,
-        resetToDefaults,
-      }}
-    >
+    <AppContext.Provider value={safeValue}>
       {children}
     </AppContext.Provider>
   )
@@ -186,7 +202,26 @@ export function AppProvider({ children }) {
 export function useApp() {
   const ctx = useContext(AppContext)
   if (!ctx) throw new Error('useApp must be used within AppProvider')
-  return ctx
+  return {
+    balance: ctx.balance ?? 0,
+    categories: ctx.categories ?? [],
+    transactions: ctx.transactions ?? [],
+    totalExpenses: ctx.totalExpenses ?? 0,
+    remainingBalance: ctx.remainingBalance ?? 0,
+    syncing: ctx.syncing ?? false,
+    toast: ctx.toast ?? null,
+    showToast: wrapWithLog(ctx.showToast, 'showToast'),
+    hideToast: wrapWithLog(ctx.hideToast, 'hideToast'),
+    getCatStats: wrapWithLog(ctx.getCatStats, 'getCatStats'),
+    setBalance: wrapWithLog(ctx.setBalance, 'setBalance'),
+    addCategory: wrapWithLog(ctx.addCategory, 'addCategory'),
+    updateCategoryBudget: wrapWithLog(ctx.updateCategoryBudget, 'updateCategoryBudget'),
+    removeCategory: wrapWithLog(ctx.removeCategory, 'removeCategory'),
+    addTransaction: wrapWithLog(ctx.addTransaction, 'addTransaction'),
+    updateTransaction: wrapWithLog(ctx.updateTransaction, 'updateTransaction'),
+    removeTransaction: wrapWithLog(ctx.removeTransaction, 'removeTransaction'),
+    resetToDefaults: wrapWithLog(ctx.resetToDefaults, 'resetToDefaults'),
+  }
 }
 
 export { DEFAULT_CATEGORIES }

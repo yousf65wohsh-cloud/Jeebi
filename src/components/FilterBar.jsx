@@ -5,8 +5,13 @@ import { useApp } from '../context/AppContext'
 const INITIAL_FILTERS = { search: '', categoryId: '', dateFrom: '', dateTo: '', amountMin: '', amountMax: '' }
 
 export default function FilterBar({ filters, setFilters, onReset }) {
-  const { categories } = useApp()
+  const { categories = [] } = useApp()
   const [showPanel, setShowPanel] = useState(false)
+
+  console.log('[FilterBar] useMemo before:', {
+    filtersType: typeof filters, filtersValue: filters,
+    onResetType: typeof onReset, setFiltersType: typeof setFilters,
+  })
 
   const hasActive = useMemo(() =>
     Object.values(filters ?? INITIAL_FILTERS).some((v) => v !== ''),

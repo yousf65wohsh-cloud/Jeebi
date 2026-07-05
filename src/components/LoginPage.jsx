@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { LogIn, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage({ onSwitchToSignup }) {
-  const { signIn, error, clearError, loading: authLoading } = useAuth()
+  const { signIn = async () => false, error = null, clearError = () => {}, loading: authLoading = true } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)

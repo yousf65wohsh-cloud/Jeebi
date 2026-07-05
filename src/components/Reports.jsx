@@ -3,7 +3,7 @@ import { BarChart3 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 export default function Reports() {
-  const { transactions, categories } = useApp()
+  const { transactions = [], categories = [] } = useApp()
 
   const dataMap = {}
   ;(transactions ?? []).forEach((txn) => {

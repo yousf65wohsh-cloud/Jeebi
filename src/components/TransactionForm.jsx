@@ -3,15 +3,15 @@ import { PlusCircle, AlertTriangle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 export default function TransactionForm() {
-  const { categories, addTransaction, getCatStats, showToast } = useApp()
+  const { categories = [], addTransaction = () => {}, getCatStats = () => ({ budget: 0, spent: 0, remaining: 0, pct: 0, cat: null }), showToast = () => {} } = useApp()
   const [amount, setAmount] = useState('')
-  const [categoryId, setCategoryId] = useState(categories[0]?.id || '')
+  const [categoryId, setCategoryId] = useState((categories ?? [])[0]?.id || '')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [description, setDescription] = useState('')
   const [overConfirm, setOverConfirm] = useState(null)
 
   useEffect(() => {
-    if (!categoryId && (categories ?? []).length > 0) setCategoryId(categories[0].id)
+    if (!categoryId && (categories ?? []).length > 0) setCategoryId((categories ?? [])[0]?.id)
   }, [categories])
 
   const doSubmit = (force) => {
@@ -24,7 +24,7 @@ export default function TransactionForm() {
         return
       }
     }
-    if (typeof addTransaction === 'function') addTransaction(val, categoryId, description.trim(), new Date(date).toISOString())
+    if (typeof addTransaction === 'function') addTransaction(val, categoryId, description.trim(), new Date(date || new Date()).toISOString())
     if (typeof getCatStats === 'function') {
       const stats = getCatStats(categoryId)
       const newPct = stats.budget > 0 ? ((stats.spent + val) / stats.budget) * 100 : 0
@@ -47,7 +47,7 @@ export default function TransactionForm() {
     setOverConfirm(null)
     const val = parseFloat(amount)
     if (isNaN(val) || val <= 0 || !categoryId) return
-    if (typeof addTransaction === 'function') addTransaction(val, categoryId, description.trim(), new Date(date).toISOString())
+    if (typeof addTransaction === 'function') addTransaction(val, categoryId, description.trim(), new Date(date || new Date()).toISOString())
     if (typeof getCatStats === 'function') {
       const stats = getCatStats(categoryId)
       if (typeof showToast === 'function') showToast(`⚠️ تم تجاوز رصيد ${stats.cat?.name}`, 'danger')

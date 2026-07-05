@@ -64,8 +64,18 @@ export function AuthProvider({ children }) {
 
   const clearError = useCallback(() => setError(null), [])
 
+  const safeValue = {
+    user: user ?? null,
+    loading: loading ?? true,
+    error: error ?? null,
+    signUp: typeof signUp === 'function' ? signUp : async () => false,
+    signIn: typeof signIn === 'function' ? signIn : async () => false,
+    signOut: typeof signOut === 'function' ? signOut : async () => {},
+    clearError: typeof clearError === 'function' ? clearError : () => {},
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, error, signUp, signIn, signOut, clearError }}>
+    <AuthContext.Provider value={safeValue}>
       {children}
     </AuthContext.Provider>
   )
@@ -89,5 +99,13 @@ function getArabicError(msg) {
 export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
+  return {
+    user: ctx.user ?? null,
+    loading: ctx.loading ?? true,
+    error: ctx.error ?? null,
+    signUp: typeof ctx.signUp === 'function' ? ctx.signUp : async () => false,
+    signIn: typeof ctx.signIn === 'function' ? ctx.signIn : async () => false,
+    signOut: typeof ctx.signOut === 'function' ? ctx.signOut : async () => {},
+    clearError: typeof ctx.clearError === 'function' ? ctx.clearError : () => {},
+  }
 }
