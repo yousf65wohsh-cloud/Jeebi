@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from './AuthContext'
 import { isSupabaseReady } from '../supabase/client'
-import { loadUserData, syncToSupabase, initializeUserData, diagnoseAndFixGoalsSchema, checkGoalsSchema, testGoalUpsert } from '../services/dataService'
+import { loadUserData, syncToSupabase, initializeUserData } from '../services/dataService'
+import { diagnoseAndFixGoalsSchema } from '../services/dataServiceDebug'
 
 const AppContext = createContext(null)
 const STORAGE_KEY = 'jeebi_data'
@@ -44,7 +45,6 @@ export function AppProvider({ children }) {
   const toastTimer = useRef(null)
   const syncTimer = useRef(null)
   const scheduledProcessedRef = useRef(false)
-  const diagnosticsRunRef = useRef(false)
   const dataRef = useRef(data)
   dataRef.current = data
 
@@ -452,23 +452,13 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (data && user && isSupabaseReady() && !scheduledProcessedRef.current) {
       scheduledProcessedRef.current = true
-      if (!diagnosticsRunRef.current) {
-        diagnosticsRunRef.current = true
-        setTimeout(() => {
-          console.log('%c[AppContext] Auto-running Goals schema diagnostics on startup...', 'font-size:14px;font-weight:bold;color:purple')
-          diagnoseAndFixGoalsSchema(user.id).catch(e => console.error('[AppContext] Diagnostics error:', e))
-        }, 2000)
-      }
       setTimeout(() => processScheduledGoals(), 500)
     }
   }, [data, user, processScheduledGoals])
 
   const runDiagnostics = useCallback(async () => {
     if (!user || !isSupabaseReady()) return
-    console.log('%c[AppContext] Running full Goals schema diagnostics...', 'font-size:16px;font-weight:bold;color:purple')
-    diagnosticsRunRef.current = true
     await diagnoseAndFixGoalsSchema(user.id)
-    console.log('%c[AppContext] Diagnostics complete — see full output above', 'font-size:16px;font-weight:bold;color:purple')
   }, [user?.id])
 
   const resetToDefaults = useCallback(async () => {
