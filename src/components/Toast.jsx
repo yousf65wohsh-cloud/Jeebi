@@ -25,7 +25,7 @@ export default function Toast() {
       >
         <AlertTriangle className={`w-5 h-5 shrink-0 ${ICON_COLORS[toast.type] || ICON_COLORS.warning}`} />
         <p className="text-sm font-medium">{toast.message}</p>
-        <button onClick={hideToast} className="opacity-60 hover:opacity-100 cursor-pointer">
+        <button onClick={() => { if (typeof hideToast === 'function') hideToast() }} className="opacity-60 hover:opacity-100 cursor-pointer">
           <X className="w-4 h-4" />
         </button>
       </div>

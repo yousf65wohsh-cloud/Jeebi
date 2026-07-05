@@ -18,17 +18,19 @@ export default function TransactionForm() {
     const val = parseFloat(amount)
     if (isNaN(val) || val <= 0 || !categoryId) return
     if (!force) {
-      const stats = getCatStats(categoryId)
+      const stats = typeof getCatStats === 'function' ? getCatStats(categoryId) : { budget: 0, spent: 0, remaining: 0, cat: null }
       if (stats.budget > 0 && val > stats.remaining) {
         setOverConfirm({ val, date, description })
         return
       }
     }
-    addTransaction(val, categoryId, description.trim(), new Date(date).toISOString())
-    const stats = getCatStats(categoryId)
-    const newPct = stats.budget > 0 ? ((stats.spent + val) / stats.budget) * 100 : 0
-    if (!force && newPct >= 90) {
-      showToast(`⚠️ لقد استهلكت ${newPct.toFixed(0)}% من رصيد ${stats.cat?.name}`, 'warning')
+    if (typeof addTransaction === 'function') addTransaction(val, categoryId, description.trim(), new Date(date).toISOString())
+    if (typeof getCatStats === 'function') {
+      const stats = getCatStats(categoryId)
+      const newPct = stats.budget > 0 ? ((stats.spent + val) / stats.budget) * 100 : 0
+      if (!force && newPct >= 90 && typeof showToast === 'function') {
+        showToast(`⚠️ لقد استهلكت ${newPct.toFixed(0)}% من رصيد ${stats.cat?.name}`, 'warning')
+      }
     }
     setAmount('')
     setDescription('')
@@ -45,9 +47,11 @@ export default function TransactionForm() {
     setOverConfirm(null)
     const val = parseFloat(amount)
     if (isNaN(val) || val <= 0 || !categoryId) return
-    addTransaction(val, categoryId, description.trim(), new Date(date).toISOString())
-    const stats = getCatStats(categoryId)
-    showToast(`⚠️ تم تجاوز رصيد ${stats.cat?.name}`, 'danger')
+    if (typeof addTransaction === 'function') addTransaction(val, categoryId, description.trim(), new Date(date).toISOString())
+    if (typeof getCatStats === 'function') {
+      const stats = getCatStats(categoryId)
+      if (typeof showToast === 'function') showToast(`⚠️ تم تجاوز رصيد ${stats.cat?.name}`, 'danger')
+    }
     setAmount('')
     setDescription('')
     setDate(new Date().toISOString().slice(0, 10))

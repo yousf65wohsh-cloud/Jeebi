@@ -11,7 +11,7 @@ export default function TransactionList() {
   const getCategory = (id) => (categories ?? []).find((c) => c.id === id)
 
   const confirmDelete = () => {
-    if (deleteId) {
+    if (deleteId && typeof removeTransaction === 'function') {
       removeTransaction(deleteId)
       setDeleteId(null)
     }

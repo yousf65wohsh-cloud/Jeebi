@@ -63,7 +63,7 @@ function SyncIndicator() {
         </span>
       )}
       <button
-        onClick={signOut}
+        onClick={() => { if (typeof signOut === 'function') signOut() }}
         className="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1"
         title="تسجيل الخروج"
       >

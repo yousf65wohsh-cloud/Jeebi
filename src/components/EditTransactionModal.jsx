@@ -23,7 +23,7 @@ export default function EditTransactionModal({ transaction, onClose }) {
     if (isNaN(val) || val <= 0 || !categoryId) return
     const updates = { amount: val, categoryId, description: description.trim() }
     if (date) updates.date = new Date(date + 'T00:00:00').toISOString()
-    updateTransaction(transaction.id, updates)
+    if (typeof updateTransaction === 'function') updateTransaction(transaction.id, updates)
     onClose()
   }
 

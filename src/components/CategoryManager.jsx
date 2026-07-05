@@ -21,9 +21,10 @@ export default function CategoryManager() {
   const [overConfirm, setOverConfirm] = useState(null)
 
   const catTxns = useMemo(() => {
+    if (!Array.isArray(categories) || !Array.isArray(transactions)) return {}
     const map = {}
-    (categories ?? []).forEach((c) => { map[c.id] = [] })
-    (transactions ?? []).forEach((t) => {
+    categories.forEach((c) => { map[c.id] = [] })
+    transactions.forEach((t) => {
       if (map[t.categoryId]) map[t.categoryId].push(t)
     })
     return map
@@ -31,7 +32,7 @@ export default function CategoryManager() {
 
   const handleAdd = () => {
     if (!name.trim()) return
-    addCategory(name.trim(), color, parseFloat(budget) || 0)
+    if (typeof addCategory === 'function') addCategory(name.trim(), color, parseFloat(budget) || 0)
     setName('')
     setColor('#3b82f6')
     setBudget('')
@@ -41,14 +42,14 @@ export default function CategoryManager() {
   const doAddTxn = (catId) => {
     const val = parseFloat(txnForm.amount)
     if (isNaN(val) || val <= 0) return
-    const stats = getCatStats(catId)
+    const stats = typeof getCatStats === 'function' ? getCatStats(catId) : { budget: 0, spent: 0, remaining: 0, cat: null }
     if (stats.budget > 0 && val > stats.remaining) {
       setOverConfirm({ catId, amount: val, description: txnForm.description, date: txnForm.date })
       return
     }
-    addTransaction(val, catId, txnForm.description, new Date(txnForm.date || new Date()).toISOString())
+    if (typeof addTransaction === 'function') addTransaction(val, catId, txnForm.description, new Date(txnForm.date || new Date()).toISOString())
     const newPct = stats.budget > 0 ? ((stats.spent + val) / stats.budget) * 100 : 0
-    if (newPct >= 90) {
+    if (newPct >= 90 && typeof showToast === 'function') {
       showToast(`⚠️ لقد استهلكت ${newPct.toFixed(0)}% من رصيد ${stats.cat?.name}`, 'warning')
     }
     setTxnForm({ catId: null, amount: '', date: '', description: '' })
@@ -56,9 +57,9 @@ export default function CategoryManager() {
 
   const confirmOverBudget = () => {
     if (!overConfirm) return
-    addTransaction(overConfirm.amount, overConfirm.catId, overConfirm.description, new Date(overConfirm.date || new Date()).toISOString())
-    const stats = getCatStats(overConfirm.catId)
-    showToast(`⚠️ تم تجاوز رصيد ${stats.cat?.name}`, 'danger')
+    if (typeof addTransaction === 'function') addTransaction(overConfirm.amount, overConfirm.catId, overConfirm.description, new Date(overConfirm.date || new Date()).toISOString())
+    const stats = typeof getCatStats === 'function' ? getCatStats(overConfirm.catId) : { budget: 0, spent: 0, remaining: 0, cat: null }
+    if (typeof showToast === 'function') showToast(`⚠️ تم تجاوز رصيد ${stats.cat?.name}`, 'danger')
     setOverConfirm(null)
     setTxnForm({ catId: null, amount: '', date: '', description: '' })
   }
@@ -109,7 +110,7 @@ export default function CategoryManager() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(categories ?? []).map((cat) => {
-              const stats = getCatStats(cat.id)
+              const stats = typeof getCatStats === 'function' ? getCatStats(cat.id) : { budget: 0, spent: 0, remaining: 0, cat: null }
               const pct = stats.budget > 0 ? Math.min((stats.spent / stats.budget) * 100, 100) : 0
               const txns = catTxns[cat.id] || []
               return (
@@ -122,7 +123,7 @@ export default function CategoryManager() {
                         <AlertTriangle className={`w-4 h-4 ${pct >= 100 ? 'text-red-500' : 'text-amber-500'}`} />
                       )}
                     </div>
-                    <button onClick={() => removeCategory(cat.id)}
+                    <button onClick={() => { if (typeof removeCategory === 'function') removeCategory(cat.id) }}
                       className="text-gray-300 hover:text-red-500 cursor-pointer">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -130,7 +131,7 @@ export default function CategoryManager() {
 
                   <div className="flex items-center gap-3 mb-2 text-xs">
                     <input type="number" value={cat.budget || ''}
-                      onChange={(e) => updateCategoryBudget(cat.id, parseFloat(e.target.value) || 0)}
+                      onChange={(e) => { if (typeof updateCategoryBudget === 'function') updateCategoryBudget(cat.id, parseFloat(e.target.value) || 0) }}
                       className="w-24 border border-gray-200 rounded px-2 py-1 text-center outline-none focus:border-purple-400"
                       placeholder="الرصيد" min="0" />
                     <span className="text-gray-400">|</span>

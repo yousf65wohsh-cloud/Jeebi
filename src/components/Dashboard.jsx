@@ -9,7 +9,7 @@ export default function Dashboard() {
 
   const handleSave = () => {
     const val = parseFloat(inputVal)
-    if (!isNaN(val) && val >= 0) {
+    if (!isNaN(val) && val >= 0 && typeof setBalance === 'function') {
       setBalance(val)
     }
     setEditing(false)
