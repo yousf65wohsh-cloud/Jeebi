@@ -15,7 +15,7 @@ export default defineConfig({
         name: 'Jeebi',
         short_name: 'Jeebi',
         description: 'مدير المصاريف الذكي',
-        start_url: '/',
+        start_url: '/?v=2',
         display: 'standalone',
         orientation: 'portrait',
         theme_color: '#7c3aed',
