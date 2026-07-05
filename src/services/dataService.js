@@ -20,6 +20,36 @@ function saveTransfers(userId, transfers) {
   } catch {}
 }
 
+function logSupabaseError(context, error, extra = {}) {
+  if (!error) return
+  console.error(`[dataService] ${context}`, {
+    code: error.code || 'N/A',
+    message: error.message || 'N/A',
+    details: error.details || 'N/A',
+    hint: error.hint || 'N/A',
+    status: error.status || error.statusCode || 'N/A',
+    statusText: error.statusText || 'N/A',
+    ...extra,
+  })
+}
+
+function validateGoal(goal) {
+  const missing = []
+  if (!goal.id) missing.push('id')
+  if (goal.title === undefined || goal.title === null) missing.push('title')
+  if (goal.target_amount === undefined || goal.target_amount === null) missing.push('target_amount')
+  if (goal.saved_amount === undefined || goal.saved_amount === null) missing.push('saved_amount')
+  if (!goal.frequency) missing.push('frequency')
+  if (goal.contribution_amount === undefined || goal.contribution_amount === null) missing.push('contribution_amount')
+  if (goal.start_date === undefined || goal.start_date === null) missing.push('start_date')
+  if (!goal.status) missing.push('status')
+  if (missing.length > 0) {
+    console.error(`[dataService] Goal validation failed — missing properties: ${missing.join(', ')}`, JSON.stringify(goal))
+    return false
+  }
+  return true
+}
+
 export async function loadUserData(userId) {
   console.log(`[dataService] Loading data for user ${userId}`)
 
@@ -30,14 +60,14 @@ export async function loadUserData(userId) {
     supabase.from('goals').select('*').eq('user_id', userId),
   ])
 
-  if (walletsResult.error) console.error('[dataService] Error loading wallets:', walletsResult.error)
-  if (transactionsResult.error) console.error('[dataService] Error loading transactions:', transactionsResult.error)
+  logSupabaseError('Error loading wallets', walletsResult.error)
+  logSupabaseError('Error loading transactions', transactionsResult.error)
   if (profileResult.error && profileResult.error.code !== 'PGRST116') {
     if (walletsResult.data?.length || transactionsResult.data?.length) {
-      console.error('[dataService] Error loading profile:', profileResult.error)
+      logSupabaseError('Error loading profile', profileResult.error)
     }
   }
-  if (goalsResult.error) console.error('[dataService] Error loading goals:', goalsResult.error)
+  logSupabaseError('Error loading goals', goalsResult.error)
 
   const wallets = walletsResult.data || []
   const transactions = transactionsResult.data || []
@@ -112,9 +142,9 @@ export async function syncToSupabase(userId, data) {
     supabase.from('goals').select('id').eq('user_id', userId),
   ])
 
-  if (existingWallets.error) console.error('[dataService] Error fetching existing wallets:', existingWallets.error)
-  if (existingTxn.error) console.error('[dataService] Error fetching existing transactions:', existingTxn.error)
-  if (existingGoals.error) console.error('[dataService] Error fetching existing goals:', existingGoals.error)
+  logSupabaseError('Error fetching existing wallets', existingWallets.error)
+  logSupabaseError('Error fetching existing transactions', existingTxn.error)
+  logSupabaseError('Error fetching existing goals', existingGoals.error)
 
   const remoteWalletIds = new Set((existingWallets.data || []).map(w => w.id))
   const remoteTxnIds = new Set((existingTxn.data || []).map(t => t.id))
@@ -126,49 +156,53 @@ export async function syncToSupabase(userId, data) {
   const walletsToDelete = [...remoteWalletIds].filter(id => !localWalletIds.has(id))
   if (walletsToDelete.length > 0) {
     const { error } = await supabase.from('wallets').delete().in('id', walletsToDelete).eq('user_id', userId)
-    if (error) console.error('[dataService] Error deleting wallets:', error)
-    else console.log(`[dataService] Deleted ${walletsToDelete.length} wallets`)
+    logSupabaseError('Error deleting wallets', error, { deletedIds: walletsToDelete })
+    if (!error) console.log(`[dataService] Deleted ${walletsToDelete.length} wallets`)
   }
 
   for (const wallet of categories) {
-    const { error } = await supabase.from('wallets').upsert({
+    const payload = {
       id: wallet.id,
       user_id: userId,
       name: wallet.name,
       color: wallet.color,
       budget: Number(wallet.budget) || 0,
-    }, { onConflict: 'id' })
-    if (error) console.error('[dataService] Error upserting wallet', wallet.id, ':', error)
+    }
+    const { error } = await supabase.from('wallets').upsert(payload, { onConflict: 'id' })
+    logSupabaseError('Error upserting wallet ' + wallet.id, error, { payload })
   }
 
   const txnToDelete = [...remoteTxnIds].filter(id => !localTxnIds.has(id))
   if (txnToDelete.length > 0) {
     const { error } = await supabase.from('transactions').delete().in('id', txnToDelete).eq('user_id', userId)
-    if (error) console.error('[dataService] Error deleting transactions:', error)
-    else console.log(`[dataService] Deleted ${txnToDelete.length} transactions`)
+    logSupabaseError('Error deleting transactions', error, { deletedIds: txnToDelete })
+    if (!error) console.log(`[dataService] Deleted ${txnToDelete.length} transactions`)
   }
 
   for (const txn of transactions) {
-    const { error } = await supabase.from('transactions').upsert({
+    const payload = {
       id: txn.id,
       user_id: userId,
       wallet_id: txn.categoryId,
       amount: Number(txn.amount) || 0,
       description: txn.description || '',
       date: txn.date,
-    }, { onConflict: 'id' })
-    if (error) console.error('[dataService] Error upserting transaction', txn.id, ':', error)
+    }
+    const { error } = await supabase.from('transactions').upsert(payload, { onConflict: 'id' })
+    logSupabaseError('Error upserting transaction ' + txn.id, error, { payload })
   }
 
   const goalsToDelete = [...remoteGoalIds].filter(id => !localGoalIds.has(id))
   if (goalsToDelete.length > 0) {
     const { error } = await supabase.from('goals').delete().in('id', goalsToDelete).eq('user_id', userId)
-    if (error) console.error('[dataService] Error deleting goals:', error)
-    else console.log(`[dataService] Deleted ${goalsToDelete.length} goals`)
+    logSupabaseError('Error deleting goals', error, { deletedIds: goalsToDelete })
+    if (!error) console.log(`[dataService] Deleted ${goalsToDelete.length} goals`)
   }
 
   for (const goal of goals) {
-    const { error } = await supabase.from('goals').upsert({
+    if (!validateGoal(goal)) continue
+
+    const payload = {
       id: goal.id,
       user_id: userId,
       title: goal.title,
@@ -183,18 +217,21 @@ export async function syncToSupabase(userId, data) {
       status: goal.status || 'active',
       created_at: goal.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' })
-    if (error) console.error('[dataService] Error upserting goal', goal.id, ':', error)
+    }
+    const { error } = await supabase.from('goals').upsert(payload, { onConflict: 'id' })
+    logSupabaseError('Error upserting goal ' + goal.id, error, { payload })
+    if (!error) console.log(`[dataService] Upserted goal ${goal.id}: "${goal.title}"`)
   }
 
-  const { error: profileError } = await supabase.from('profiles').upsert({
+  const profilePayload = {
     id: userId,
     balance: balance,
     savings: savings,
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'id' })
-  if (profileError) console.error('[dataService] Error upserting profile:', profileError)
-  else console.log(`[dataService] Sync complete — balance=${balance}, savings=${savings}`)
+  }
+  const { error: profileError } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' })
+  logSupabaseError('Error upserting profile', profileError, { payload: profilePayload })
+  if (!profileError) console.log(`[dataService] Sync complete — balance=${balance}, savings=${savings}`)
 
   saveTransfers(userId, data.transfers || [])
 }
@@ -220,23 +257,20 @@ export async function initializeUserData(userId) {
   }))
 
   for (const cat of categories) {
-    const { error } = await supabase.from('wallets').upsert({
+    const payload = {
       id: cat.id,
       user_id: userId,
       name: cat.name,
       color: cat.color,
       budget: cat.budget,
-    }, { onConflict: 'id' })
-    if (error) console.error('[dataService] Error creating default wallet', cat.name, ':', error)
+    }
+    const { error } = await supabase.from('wallets').upsert(payload, { onConflict: 'id' })
+    logSupabaseError('Error creating default wallet ' + cat.name, error, { payload })
   }
 
-  const { error: profileError } = await supabase.from('profiles').upsert({
-    id: userId,
-    balance: 0,
-    savings: 0,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'id' })
-  if (profileError) console.error('[dataService] Error upserting profile:', profileError)
+  const profilePayload = { id: userId, balance: 0, savings: 0, updated_at: new Date().toISOString() }
+  const { error: profileError } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' })
+  logSupabaseError('Error upserting profile', profileError, { payload: profilePayload })
 
   console.log(`[dataService] Initialized ${categories.length} default categories for user ${userId}`)
 
@@ -249,18 +283,17 @@ export async function clearUserData(userId) {
   localStorage.removeItem(getTransfersKey(userId))
 
   const { error: txnError } = await supabase.from('transactions').delete().eq('user_id', userId)
-  if (txnError) console.error('[dataService] Error clearing transactions:', txnError)
+  logSupabaseError('Error clearing transactions', txnError)
 
   const { error: walletError } = await supabase.from('wallets').delete().eq('user_id', userId)
-  if (walletError) console.error('[dataService] Error clearing wallets:', walletError)
+  logSupabaseError('Error clearing wallets', walletError)
 
   const { error: goalsError } = await supabase.from('goals').delete().eq('user_id', userId)
-  if (goalsError) console.error('[dataService] Error clearing goals:', goalsError)
+  logSupabaseError('Error clearing goals', goalsError)
 
-  const { error: profileError } = await supabase.from('profiles').upsert({
-    id: userId, balance: 0, savings: 0, updated_at: new Date().toISOString(),
-  })
-  if (profileError) console.error('[dataService] Error resetting profile:', profileError)
+  const profilePayload = { id: userId, balance: 0, savings: 0, updated_at: new Date().toISOString() }
+  const { error: profileError } = await supabase.from('profiles').upsert(profilePayload)
+  logSupabaseError('Error resetting profile', profileError, { payload: profilePayload })
 
   console.log('[dataService] Clear complete')
 }

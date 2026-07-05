@@ -28,11 +28,30 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3. User profiles (الرصيد الكلي)
+-- 3. User profiles (الرصيد الكلي + المدخرات)
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   balance NUMERIC NOT NULL DEFAULT 0,
+  savings NUMERIC NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 4. Goals (الأهداف)
+CREATE TABLE IF NOT EXISTS goals (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  emoji TEXT DEFAULT '',
+  target_amount NUMERIC NOT NULL DEFAULT 0,
+  saved_amount NUMERIC NOT NULL DEFAULT 0,
+  frequency TEXT NOT NULL DEFAULT 'monthly',
+  contribution_amount NUMERIC NOT NULL DEFAULT 0,
+  start_date TEXT NOT NULL DEFAULT '',
+  target_date TEXT DEFAULT NULL,
+  last_contribution_date TEXT DEFAULT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
 -- ============================================
@@ -42,6 +61,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 ALTER TABLE wallets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
 
 -- ----- Wallets policies -----
 CREATE POLICY "Users can view their own wallets"
@@ -89,6 +110,23 @@ CREATE POLICY "Users can upsert their own profile"
 CREATE POLICY "Users can update their own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
+
+-- ----- Goals policies -----
+CREATE POLICY "Users can view their own goals"
+  ON goals FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create their own goals"
+  ON goals FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own goals"
+  ON goals FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own goals"
+  ON goals FOR DELETE
+  USING (auth.uid() = user_id);
 
 -- ============================================
 -- Automatic profile creation on signup
