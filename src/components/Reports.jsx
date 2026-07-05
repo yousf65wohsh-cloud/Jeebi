@@ -43,7 +43,7 @@ export default function Reports() {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value) => value.toLocaleString('en-US') + ' د.ع'}
+                formatter={(value) => (value ?? 0).toLocaleString('en-US') + ' د.ع'}
               />
             </PieChart>
           </ResponsiveContainer>

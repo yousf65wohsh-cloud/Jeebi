@@ -169,7 +169,7 @@
     }
 
     function fmt(n) {
-      try { return n.toLocaleString('en-US'); } catch { return n.toLocaleString(); }
+      return (n ?? 0).toLocaleString('en-US');
     }
 
     function Toast() {

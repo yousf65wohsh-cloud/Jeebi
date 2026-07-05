@@ -45,7 +45,7 @@ export default function Dashboard() {
             className="text-2xl font-bold text-gray-800 cursor-pointer hover:text-blue-600"
             onClick={() => setEditing(true)}
           >
-            {balance.toLocaleString('en-US')} د.ع
+            {(balance ?? 0).toLocaleString('en-US')} د.ع
           </div>
         )}
         <p className="text-xs text-gray-400 mt-1">اضغط لتعديل الرصيد</p>
@@ -57,7 +57,7 @@ export default function Dashboard() {
           <TrendingDown className="w-5 h-5 text-red-500" />
         </div>
         <div className="text-2xl font-bold text-red-500">
-          {totalExpenses.toLocaleString('en-US')} د.ع
+          {(totalExpenses ?? 0).toLocaleString('en-US')} د.ع
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export default function Dashboard() {
         <div
           className={`text-2xl font-bold ${remainingBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}
         >
-          {remainingBalance.toLocaleString('en-US')} د.ع
+          {(remainingBalance ?? 0).toLocaleString('en-US')} د.ع
         </div>
       </div>
     </div>

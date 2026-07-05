@@ -135,11 +135,11 @@ export default function CategoryManager() {
                       placeholder="الرصيد" min="0" />
                     <span className="text-gray-400">|</span>
                     <span className={`font-medium ${pct >= 75 ? 'text-red-500' : 'text-gray-600'}`}>
-                      {(stats.spent).toLocaleString('en-US')} د.ع
+                      {(stats.spent ?? 0).toLocaleString('en-US')} د.ع
                     </span>
                     <span className="text-gray-400">|</span>
                     <span className={`font-medium ${stats.remaining >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {(stats.remaining).toLocaleString('en-US')} د.ع
+                      {(stats.remaining ?? 0).toLocaleString('en-US')} د.ع
                     </span>
                   </div>
 
@@ -148,7 +148,7 @@ export default function CategoryManager() {
                       style={{ width: pct + '%', backgroundColor: barColor(pct) }} />
                   </div>
                   <div className="flex justify-between text-xs text-gray-400 mb-2">
-                    <span>{(stats.budget).toLocaleString('en-US')} د.ع</span>
+                    <span>{(stats.budget ?? 0).toLocaleString('en-US')} د.ع</span>
                     <span style={{ color: barColor(pct) }} className="font-medium">{pct.toFixed(0)}%</span>
                   </div>
 
@@ -200,7 +200,7 @@ export default function CategoryManager() {
                                 <span className="text-gray-400">{new Date(txn.date).toLocaleDateString('en-US')}</span>
                                 {txn.description && <span className="text-gray-500 truncate max-w-24">{txn.description}</span>}
                               </div>
-                              <span className="font-medium text-red-500">-{(txn.amount).toLocaleString('en-US')} د.ع</span>
+                              <span className="font-medium text-red-500">-{(txn.amount ?? 0).toLocaleString('en-US')} د.ع</span>
                             </div>
                           ))}
                         </div>

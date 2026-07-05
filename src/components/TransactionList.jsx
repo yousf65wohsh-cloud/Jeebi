@@ -54,7 +54,7 @@ export default function TransactionList() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-sm font-bold text-red-500">
-                      -{txn.amount.toLocaleString('en-US')} د.ع
+                      -{(txn.amount ?? 0).toLocaleString('en-US')} د.ع
                     </span>
                     <button
                       onClick={() => setEditTxn(txn)}
