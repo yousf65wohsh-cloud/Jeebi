@@ -114,7 +114,7 @@ export function calcHealthScore(stats, categories, goals) {
   if (emergencyScore < 10) improvements.push('اجمع مدخرات طوارئ تكفي 3-6 أشهر')
 
   return {
-    score, grade, reasons, improvements,
+    score, grade: getGrade(score), reasons, improvements,
     breakdown: { savingScore, budgetScore, goalScore, stabilityScore, emergencyScore, consistencyOfSpending, trendImprovement }
   }
 }
