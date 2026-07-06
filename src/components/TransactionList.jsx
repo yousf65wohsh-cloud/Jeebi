@@ -44,13 +44,6 @@ export default function TransactionList() {
 
   const getCategory = (id) => (categories ?? []).find((c) => c.id === id)
 
-  console.log('[TransactionList] useMemo before:', {
-    transactionsType: typeof transactions, isArray: Array.isArray(transactions),
-    filtersType: typeof filters, isObject: typeof filters === 'object' && filters !== null,
-    removeTransactionType: typeof removeTransaction,
-    getCategoryType: typeof getCategory,
-  })
-
   const filtered = useMemo(
     () => applyFilters(transactions, filters),
     [JSON.stringify(transactions), JSON.stringify(filters)]

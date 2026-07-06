@@ -1,155 +1,64 @@
-export function generateRecommendations(stats, catSpending, goals, healthScore) {
+export function generateRecommendations(stats, catSpending, goals) {
   const recs = []
 
-  const catEntries = Object.entries(catSpending || {})
-    .map(([name, data]) => ({ name, ...data }))
+  const entries = Object.entries(catSpending || {})
+    .map(([name, d]) => ({ name, ...d }))
     .sort((a, b) => b.amount - a.amount)
 
-  if (catEntries.length > 0) {
-    const top = catEntries[0]
-    const topPct = stats.totalExpenses > 0 ? (top.amount / stats.totalExpenses) * 100 : 0
-    const yearlyTop = top.amount * (12 / Math.max(1, stats.monthsOfHistory))
-    const savings10Pct = yearlyTop * 0.1
-
-    recs.push({
-      type: 'category',
-      title: top.name,
-      pct: Math.round(topPct),
-      yearly: Math.round(yearlyTop),
-      savings: Math.round(savings10Pct),
-      text: `تنفق ${Math.round(topPct)}% من أموالك على ${top.name}. تخفيض هذه الفئة بنسبة 10% قد يوفر ${Math.round(savings10Pct).toLocaleString('en-US')} د.ع سنويًا.`
-    })
-
-    if (catEntries.length > 1) {
-      const second = catEntries[1]
-      const secondPct = stats.totalExpenses > 0 ? (second.amount / stats.totalExpenses) * 100 : 0
-      if (secondPct > 10) {
-        const secondYearly = second.amount * (12 / Math.max(1, stats.monthsOfHistory))
-        recs.push({
-          type: 'category',
-          title: second.name,
-          pct: Math.round(secondPct),
-          yearly: Math.round(secondYearly),
-          savings: Math.round(secondYearly * 0.1),
-          text: `${second.name} تمثل ${Math.round(secondPct)}% من إنفاقك. ترشيدها قد يوفر ${Math.round(secondYearly * 0.1).toLocaleString('en-US')} د.ع سنويًا.`
-        })
-      }
-    }
-  }
-
-  const weeklyKeys = Object.keys(stats.weeklyMap || {}).sort()
-  if (weeklyKeys.length >= 3) {
-    const last3 = weeklyKeys.slice(-3).map(k => stats.weeklyMap[k])
-    const allIncreasing = last3[2] > last3[1] && last3[1] > last3[0]
-    if (allIncreasing && last3[0] > 0) {
-      const pctIncrease = Math.round(((last3[2] - last3[0]) / last3[0]) * 100)
-      if (pctIncrease > 15) {
-        const topTransport = catEntries.find(c => c.name === 'مواصلات' || c.name === 'النقل')
-        if (topTransport) {
-          recs.push({
-            type: 'trend',
-            title: topTransport.name,
-            direction: 'up',
-            pct: pctIncrease,
-            text: `مصاريف ${topTransport.name} في ارتفاع للأسبوع الثالث على التوالي (${pctIncrease}%).`
-          })
-        } else {
-          recs.push({
-            type: 'trend',
-            title: catEntries[0]?.name || 'المصاريف',
-            direction: 'up',
-            pct: pctIncrease,
-            text: `إنفاقك في ارتفاع مستمر بنسبة ${pctIncrease}% خلال الأسابيع الثلاثة الماضية.`
-          })
-        }
-      }
-    }
-    if (last3[2] < last3[0] && last3[0] > 0) {
-      const pctDrop = Math.round(((last3[0] - last3[2]) / last3[0]) * 100)
-      if (pctDrop > 10) {
-        recs.push({
-          type: 'trend',
-          title: 'الإنفاق',
-          direction: 'down',
-          pct: pctDrop,
-          text: `نمط إنفاقك الحالي أفضل من الشهر الماضي — انخفاض بنسبة ${pctDrop}%.`
-        })
-      }
+  if (entries.length > 0) {
+    const top = entries[0]
+    const pct = stats.totalExpenses > 0 ? (top.amount / stats.totalExpenses) * 100 : 0
+    const yearly = top.amount * (12 / Math.max(1, stats.daysOfHistory / 30.44))
+    if (pct > 15) {
+      recs.push({
+        type: 'category', title: top.name, pct: Math.round(pct), savings: Math.round(yearly * 0.1),
+        text: `تنفق ${Math.round(pct)}% على ${top.name}. تخفيض 10% قد يوفر ${Math.round(yearly * 0.1).toLocaleString('en-US')} د.ع سنويًا.`
+      })
     }
   }
 
   const savingsRatio = stats.balance > 0 ? (stats.savings / stats.balance) * 100 : 0
   if (savingsRatio < 15 && stats.balance > 0) {
-    const recommendedMonthly = stats.monthlyIncome * 0.2
     recs.push({
-      type: 'savings',
-      current: Math.round(savingsRatio),
-      target: 20,
-      extraMonthly: Math.round(recommendedMonthly),
-      text: `نسبة الادخار لديك (${Math.round(savingsRatio)}%) أقل من المستوى الموصى به (20%). حاول ادخار ${Math.round(recommendedMonthly).toLocaleString('en-US')} د.ع شهريًا.`
+      type: 'savings', current: Math.round(savingsRatio), target: 20, extraMonthly: Math.round(stats.monthlyIncome * 0.2),
+      text: `نسبة الادخار (${Math.round(savingsRatio)}%) أقل من الموصى به (20%). حاول ادخار ${Math.round(stats.monthlyIncome * 0.2).toLocaleString('en-US')} د.ع شهريًا.`
     })
   }
 
-  Object.entries(catSpending || {}).forEach(([name, data]) => {
-    if ((data.budget || 0) > 0) {
-      const monthlyRate = data.amount / Math.max(1, stats.monthsOfHistory)
-      const budget = data.budget
-      if (monthlyRate > budget * 0.85 && budget > 0) {
-        recs.push({
-          type: 'budgetWarning',
-          title: name,
-          budget,
-          current: Math.round(monthlyRate),
-          text: `من المحتمل أن تتجاوز ميزانية ${name} الأسبوع القادم (${Math.round(monthlyRate).toLocaleString('en-US')} د.ع / ${budget.toLocaleString('en-US')} د.ع).`
-        })
-      }
-    }
-  })
-
+  const weeklyKeys = Object.keys(stats.weeklyMap || {}).sort()
   if (weeklyKeys.length >= 2) {
-    const lastWeek = stats.weeklyMap[weeklyKeys[weeklyKeys.length - 1]] || 0
-    const prevWeek = stats.weeklyMap[weeklyKeys[weeklyKeys.length - 2]] || 0
-    if (lastWeek > prevWeek * 1.25 && prevWeek > 0) {
+    const last = stats.weeklyMap[weeklyKeys[weeklyKeys.length - 1]] || 0
+    const prev = stats.weeklyMap[weeklyKeys[weeklyKeys.length - 2]] || 0
+    if (last > prev * 1.25 && prev > 0) {
       recs.push({
-        type: 'weeklyAlert',
-        weekTotal: Math.round(lastWeek),
-        prevTotal: Math.round(prevWeek),
-        text: `مصاريف هذا الأسبوع (${Math.round(lastWeek).toLocaleString('en-US')} د.ع) أعلى بنسبة ${Math.round((lastWeek / prevWeek - 1) * 100)}% من الأسبوع الماضي.`
+        type: 'alert', weekTotal: Math.round(last), prevTotal: Math.round(prev),
+        text: `مصاريف هذا الأسبوع (${Math.round(last).toLocaleString('en-US')} د.ع) أعلى ${Math.round((last / prev - 1) * 100)}% من الأسبوع الماضي.`
       })
     }
   }
 
-  const activeGoals = (goals || []).filter(g => !g.completed && g.target_amount > 0)
-  if (activeGoals.length > 0) {
-    const nearGoal = activeGoals.sort((a, b) => {
-      const aRemaining = (a.target_amount || 0) - (a.saved_amount || 0)
-      const bRemaining = (b.target_amount || 0) - (b.saved_amount || 0)
-      const aRate = a.transfer_amount || 0
-      const bRate = b.transfer_amount || 0
-      return (aRate > 0 ? aRemaining / aRate : 999) - (bRate > 0 ? bRemaining / bRate : 999)
-    })[0]
-    if (nearGoal && nearGoal.transfer_amount > 0) {
-      const remaining = (nearGoal.target_amount || 0) - (nearGoal.saved_amount || 0)
-      const boost = (nearGoal.transfer_amount || 0) * 0.5
-      const monthsSaved = boost > 0 ? Math.round(remaining / (nearGoal.transfer_amount + boost)) : 0
-      const currentMonths = Math.round(remaining / nearGoal.transfer_amount)
-      if (monthsSaved < currentMonths && monthsSaved > 0) {
-        recs.push({
-          type: 'goalBoost',
-          title: nearGoal.title,
-          monthsSaved: currentMonths - monthsSaved,
-          text: `زيادة التحويل الشهري لهدف "${nearGoal.title}" بنسبة 50% قد ينهيه قبل موعده بـ ${currentMonths - monthsSaved} شهرًا.`
-        })
-      }
+  if (stats.trend > 15) {
+    recs.push({
+      type: 'trend', direction: 'up', pct: Math.round(stats.trend),
+      text: `مصاريفك في ارتفاع ${Math.round(stats.trend)}%. راجع فئات الإنفاق.`
+    })
+  }
+
+  const activeGoals = (goals || []).filter(g => !g.completed && g.transfer_amount > 0)
+  if (activeGoals.length > 0 && entries.length > 0) {
+    const yearlyTop = entries[0].amount * (12 / Math.max(1, stats.daysOfHistory / 30.44))
+    const potential = Math.round(yearlyTop * 0.15 / 12)
+    if (potential > 0) {
+      recs.push({
+        type: 'goalBoost', title: entries[0].name, amount: potential,
+        text: `تخفيض ${entries[0].name} قد يحرر ${potential.toLocaleString('en-US')} د.ع شهريًا لأهدافك.`
+      })
     }
   }
 
   if (recs.length === 0) {
-    recs.push({
-      type: 'general',
-      text: 'وضعك المالي مستقر. استمر في تتبع معاملاتك للحصول على توصيات أكثر دقة.'
-    })
+    recs.push({ type: 'general', text: 'وضعك المالي مستقر. استمر في تتبع معاملاتك.' })
   }
 
-  return recs.slice(0, 5)
+  return recs.slice(0, 4)
 }

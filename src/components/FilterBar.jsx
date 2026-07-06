@@ -8,11 +8,6 @@ export default function FilterBar({ filters, setFilters, onReset }) {
   const { categories = [] } = useApp()
   const [showPanel, setShowPanel] = useState(false)
 
-  console.log('[FilterBar] useMemo before:', {
-    filtersType: typeof filters, filtersValue: filters,
-    onResetType: typeof onReset, setFiltersType: typeof setFilters,
-  })
-
   const hasActive = useMemo(() =>
     Object.values(filters ?? INITIAL_FILTERS).some((v) => v !== ''),
     [filters]

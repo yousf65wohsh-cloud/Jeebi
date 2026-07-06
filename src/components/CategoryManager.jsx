@@ -21,14 +21,6 @@ export default function CategoryManager() {
   const [txnForm, setTxnForm] = useState({ catId: null, amount: '', date: '', description: '' })
   const [overConfirm, setOverConfirm] = useState(null)
 
-  console.log('[CategoryManager] useMemo before:', {
-    categoriesType: typeof categories, isArrayCategories: Array.isArray(categories),
-    transactionsType: typeof transactions, isArrayTransactions: Array.isArray(transactions),
-    addCategoryType: typeof addCategory,
-    getCatStatsType: typeof getCatStats,
-    showToastType: typeof showToast,
-  })
-
   const catTxns = useMemo(() => {
     if (!Array.isArray(categories) || !Array.isArray(transactions)) return {}
     const map = {}
