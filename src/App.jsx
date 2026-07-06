@@ -140,7 +140,7 @@ function AppContent() {
             <div className="order-1 md:order-5" id="add-expense">
               <div className="md:grid md:grid-cols-2 md:gap-6">
                 <TransactionForm />
-                <div className="hidden md:block">
+                <div>
                   <Reports />
                 </div>
               </div>

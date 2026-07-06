@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { BarChart3 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import SmartInsights from './SmartInsights'
 
 export default function Reports() {
   const { transactions = [], categories = [] } = useApp()
@@ -61,6 +62,7 @@ export default function Reports() {
               </div>
             ))}
           </div>
+          <SmartInsights />
         </>
       )}
     </div>
