@@ -51,7 +51,9 @@ import Goals from './components/Goals'
 import Toast from './components/Toast'
 import LoginPage from './components/LoginPage'
 import SignupPage from './components/SignupPage'
-import { LogOut, Cloud, CloudOff, Loader2, Plus } from 'lucide-react'
+import { LogOut, Cloud, CloudOff, Loader2, Plus, BarChart3, Home, TrendingUp } from 'lucide-react'
+import FinancialInsights from './components/FinancialInsights'
+import FinancialFuture from './components/FinancialFuture'
 
 function AuthGate({ children }) {
   const { user = null, loading = true } = useAuth()
@@ -124,6 +126,8 @@ function AppContent() {
     document.getElementById('goals')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const [activeTab, setActiveTab] = useState('home')
+
   return (
     <AppProvider>
       <Toast />
@@ -135,38 +139,65 @@ function AppContent() {
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto px-3 py-3 md:px-4 md:py-6 pb-16 md:pb-0">
-          <div className="flex flex-col gap-3 md:gap-6">
-            <div className="order-1 md:order-5" id="add-expense">
-              <div className="md:grid md:grid-cols-2 md:gap-6">
-                <TransactionForm />
-                <div>
-                  <Reports />
+        <div className="sticky top-[49px] md:top-[73px] z-10 bg-white/90 backdrop-blur-sm border-b border-gray-100">
+          <div className="max-w-4xl mx-auto flex">
+            <button onClick={() => setActiveTab('home')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors cursor-pointer ${activeTab === 'home' ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-400 hover:text-gray-600 border-b-2 border-transparent'}`}>
+              <Home size={16} />
+              الرئيسية
+            </button>
+            <button onClick={() => setActiveTab('insights')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors cursor-pointer ${activeTab === 'insights' ? 'text-indigo-600 border-b-2 border-indigo-500' : 'text-gray-400 hover:text-gray-600 border-b-2 border-transparent'}`}>
+              <BarChart3 size={16} />
+              التحليل المالي
+            </button>
+            <button onClick={() => setActiveTab('future')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors cursor-pointer ${activeTab === 'future' ? 'text-purple-600 border-b-2 border-purple-500' : 'text-gray-400 hover:text-gray-600 border-b-2 border-transparent'}`}>
+              <TrendingUp size={16} />
+              المستقبل المالي
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'home' ? (
+          <main className="max-w-4xl mx-auto px-3 py-3 md:px-4 md:py-6 pb-16 md:pb-0">
+            <div className="flex flex-col gap-3 md:gap-6">
+              <div className="order-1 md:order-5" id="add-expense">
+                <div className="md:grid md:grid-cols-2 md:gap-6">
+                  <TransactionForm />
+                  <div>
+                    <Reports />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="order-2 md:order-1">
-              <Dashboard onGoalsClick={scrollToGoals} />
-            </div>
+              <div className="order-2 md:order-1">
+                <Dashboard onGoalsClick={scrollToGoals} />
+              </div>
 
-            <div className="order-3 md:order-2">
-              <CategoryManager />
-            </div>
+              <div className="order-3 md:order-2">
+                <CategoryManager />
+              </div>
 
-            <div className="order-4 md:order-3" id="savings">
-              <Savings />
-            </div>
+              <div className="order-4 md:order-3" id="savings">
+                <Savings />
+              </div>
 
-            <div className="order-5 md:order-4" id="goals">
-              <Goals />
-            </div>
+              <div className="order-5 md:order-4" id="goals">
+                <Goals />
+              </div>
 
-            <div className="order-6">
-              <TransactionList />
+              <div className="order-6">
+                <TransactionList />
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        ) : activeTab === 'insights' ? (
+          <main className="max-w-4xl mx-auto px-3 py-3 md:px-4 md:py-6 pb-16 md:pb-0">
+            <FinancialInsights />
+          </main>
+        ) : (
+          <main className="max-w-4xl mx-auto px-3 py-3 md:px-4 md:py-6 pb-16 md:pb-0">
+            <FinancialFuture />
+          </main>
+        )}
 
         <footer className="hidden md:block text-center py-6 text-xs text-gray-400">
           جيبي &copy; {new Date().getFullYear()} — تطبيق مفتوح المصدر
